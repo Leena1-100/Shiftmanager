@@ -4,10 +4,10 @@ import { calcShift, summarize } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { taxFreeRoom, weeklyWithholding, WEEKLY_TAX_FREE } from '../lib/tax';
 import { BAND_LABEL } from '../lib/defaults';
-import { WEEKDAY_KO, dayOfWeek, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
+import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
 import { PlusIcon, SwapIcon, ClockIcon, CheckIcon } from './Icons';
 
-export const SOURCE_LABEL: Record<Source, string> = { tanda: '탄다', message: '메시지', manual: '직접' };
+export const SOURCE_LABEL: Record<Source, string> = { tanda: 'Tanda', message: 'Message', manual: 'Manual' };
 
 interface Props {
   settings: Settings;
@@ -35,76 +35,76 @@ export default function HomeTab({ settings, shifts, onEdit, onAdd, onSave, onGoI
       <section className="hero">
         <div className="seg" role="tablist">
           <button className={mode === 'effective' ? 'on' : ''} onClick={() => setMode('effective')}>
-            실제 반영
+            With actuals
           </button>
           <button className={mode === 'planned' ? 'on' : ''} onClick={() => setMode('planned')}>
-            시프트 예정
+            Rostered
           </button>
         </div>
-        <div className="hero-label">이번 주 받을 돈 (세전)</div>
+        <div className="hero-label">This week's pay (before tax)</div>
         <div className="hero-amount">{fmtMoney(sum.gross)}</div>
         <div className="hero-rows">
           <div>
-            <span>예상 세금 (PAYG)</span>
+            <span>Est. tax (PAYG)</span>
             <b>-{fmtMoney(tax)}</b>
           </div>
           <div>
-            <span>예상 실수령</span>
+            <span>Est. take-home</span>
             <b>{fmtMoney(net)}</b>
           </div>
         </div>
         {mode === 'effective' && effective.actualCount > 0 && diff !== 0 && (
           <div className="hero-note">
-            예정보다 {diff > 0 ? '+' : ''}
-            {fmtMoney(diff)} ({diff > 0 ? '+' : ''}
+            {diff > 0 ? '+' : ''}
+            {fmtMoney(diff)} vs roster ({diff > 0 ? '+' : ''}
             {fmtDuration(effective.workedMinutes - planned.workedMinutes)})
           </div>
         )}
       </section>
 
       <section className="stats">
-        <Stat label="유급 근무" value={fmtDuration(sum.workedMinutes)} />
-        <Stat label="유급 휴식" value={`${sum.paidBreak}분`} />
-        <Stat label="무급 휴식" value={`${sum.unpaidBreak}분`} />
-        <Stat label="실제 기록" value={`${effective.actualCount}/${shifts.length}`} />
+        <Stat label="Paid time" value={fmtDuration(sum.workedMinutes)} />
+        <Stat label="Paid breaks" value={`${sum.paidBreak}m`} />
+        <Stat label="Unpaid breaks" value={`${sum.unpaidBreak}m`} />
+        <Stat label="Actuals logged" value={`${effective.actualCount}/${shifts.length}`} />
       </section>
 
       {room !== null && (
         <section className="card">
           <div className="card-title">
-            세금 0원 구간 <span className="muted">주 {fmtMoney(WEEKLY_TAX_FREE)}까지</span>
+            Tax-free zone <span className="muted">up to {fmtMoney(WEEKLY_TAX_FREE)}/week</span>
           </div>
           <div className="meter" aria-hidden="true">
             <div style={{ width: `${Math.min(100, (sum.gross / WEEKLY_TAX_FREE) * 100)}%` }} />
           </div>
           {room > 0 ? (
             <p className="small">
-              {fmtMoney(room)} 더 벌 때까지 세금 없음 · 평일 기준 약{' '}
-              <b>{fmtDuration((room / (settings.baseRate * settings.multipliers.weekday)) * 60)}</b> 더 일할 수 있어요
+              No tax for another {fmtMoney(room)} · about{' '}
+              <b>{fmtDuration((room / (settings.baseRate * settings.multipliers.weekday)) * 60)}</b> more at the weekday rate
             </p>
           ) : (
             <p className="small">
-              면세 구간을 {fmtMoney(sum.gross - WEEKLY_TAX_FREE)} 넘었어요. 초과분부터 세금이 붙어요.
+              You're {fmtMoney(sum.gross - WEEKLY_TAX_FREE)} over the tax-free zone. Tax applies to the amount above it.
             </p>
           )}
         </section>
       )}
       {settings.taxMode === 'whm' && (
-        <p className="small muted pad">워킹홀리데이는 면세 구간 없이 첫 달러부터 15%가 적용돼요.</p>
+        <p className="small muted pad">Working holiday makers have no tax-free threshold: 15% from the first dollar.</p>
       )}
 
       <div className="section-head">
-        <h2>시프트</h2>
+        <h2>Shifts</h2>
         <button className="ghost-btn" onClick={onAdd}>
-          <PlusIcon size={16} /> 직접 추가
+          <PlusIcon size={16} /> Add shift
         </button>
       </div>
 
       {shifts.length === 0 ? (
         <div className="empty">
-          <p>이번 주 시프트가 아직 없어요</p>
+          <p>No shifts this week yet</p>
           <button className="primary" onClick={onGoImport}>
-            탄다 / 메시지에서 가져오기
+            Import from Tanda / messages
           </button>
         </div>
       ) : (
@@ -117,7 +117,7 @@ export default function HomeTab({ settings, shifts, onEdit, onAdd, onSave, onGoI
 
       {sum.gross > 0 && (
         <section className="card">
-          <div className="card-title">수당 구간별</div>
+          <div className="card-title">Pay by rate</div>
           <ul className="breakdown">
             {(Object.entries(sum.minutesByBand) as [Band, number][]).map(([band, mins]) => (
               <li key={band}>
@@ -130,7 +130,7 @@ export default function HomeTab({ settings, shifts, onEdit, onAdd, onSave, onGoI
             ))}
           </ul>
           <p className="small muted">
-            시급 {fmtMoney(settings.baseRate)} 기준 · 슈퍼(회사 별도 적립) 약 {fmtMoney(superAmt)}
+            Base rate {fmtMoney(settings.baseRate)}/h · Super (paid separately by employer) ≈ {fmtMoney(superAmt)}
           </p>
         </section>
       )}
@@ -156,13 +156,13 @@ function ShiftCard({ shift, settings, onEdit, onSwap }: { shift: Shift; settings
   return (
     <article className="shift" onClick={onEdit} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onEdit()}>
       <div className={`shift-day${weekend ? ' weekend' : ''}${shift.publicHoliday ? ' ph' : ''}`}>
-        <b>{WEEKDAY_KO[dow]}</b>
+        <b>{WEEKDAY_SHORT[dow]}</b>
         <span>{fmtDateShort(shift.date)}</span>
       </div>
       <div className="shift-body">
         <div className="shift-time">
           {fmtTime(shift.start)} – {fmtTime(shift.end)}
-          {shift.end >= 1440 && <span className="muted small"> (+1일)</span>}
+          {shift.end >= 1440 && <span className="muted small"> (+1 day)</span>}
         </div>
         <div className="shift-meta">
           {shift.sources.map((src) => (
@@ -170,26 +170,26 @@ function ShiftCard({ shift, settings, onEdit, onSwap }: { shift: Shift; settings
               {SOURCE_LABEL[src]}
             </span>
           ))}
-          {shift.publicHoliday && <span className="badge ph">공휴일</span>}
+          {shift.publicHoliday && <span className="badge ph">Public holiday</span>}
           <span className="muted">
-            유급휴식 {plan.paidBreak}분 · 무급 {plan.unpaidBreak}분
+            Paid break {plan.paidBreak}m · Unpaid {plan.unpaidBreak}m
           </span>
         </div>
         {shift.actual ? (
           <div className="shift-actual">
-            <CheckIcon size={14} /> 실제 {fmtTime(shift.actual.start)}–{fmtTime(shift.actual.end)} · 무급 {shift.actual.unpaidBreak}분 ·{' '}
+            <CheckIcon size={14} /> Actual {fmtTime(shift.actual.start)}–{fmtTime(shift.actual.end)} · Unpaid {shift.actual.unpaidBreak}m ·{' '}
             {fmtDuration(eff.workedMinutes)}
             {eff.workedMinutes !== plan.workedMinutes && (
               <span className={eff.workedMinutes > plan.workedMinutes ? 'up' : 'down'}>
                 {' '}
                 ({eff.workedMinutes > plan.workedMinutes ? '+' : ''}
-                {eff.workedMinutes - plan.workedMinutes}분)
+                {eff.workedMinutes - plan.workedMinutes}m)
               </span>
             )}
           </div>
         ) : (
           <div className="shift-todo">
-            <ClockIcon size={14} /> 일하고 와서 실제 시간 입력하기
+            <ClockIcon size={14} /> Log actual times after your shift
           </div>
         )}
         {shift.alt && (
@@ -200,7 +200,7 @@ function ShiftCard({ shift, settings, onEdit, onSwap }: { shift: Shift; settings
               onSwap();
             }}
           >
-            <SwapIcon size={14} /> {SOURCE_LABEL[shift.alt.source]} 버전 {fmtTime(shift.alt.start)}–{fmtTime(shift.alt.end)}으로 바꾸기
+            <SwapIcon size={14} /> Use {SOURCE_LABEL[shift.alt.source]} version {fmtTime(shift.alt.start)}–{fmtTime(shift.alt.end)}
           </button>
         )}
       </div>

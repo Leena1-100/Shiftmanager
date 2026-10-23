@@ -31,11 +31,11 @@ function overlaps(a: { date: string; start: number; end: number }, b: { date: st
 }
 
 /**
- * 기존 시프트에 새로 가져온 시프트를 합친다.
- * - 같은 날 겹치는 시프트가 없으면 추가
- * - 시간이 같으면 출처만 추가 (중복)
- * - 시간이 다르면 우선순위가 높은 출처의 시간을 적용하고, 나머지는 alt 로 보관 (언제든 바꿀 수 있음)
- * - 실제 근무 기록은 항상 유지
+ * Merge imported shifts into the existing ones.
+ * - No overlapping shift on the same day → add it
+ * - Same times → just record the extra source (duplicate)
+ * - Different times → apply the higher-priority source and keep the other as `alt` (swappable any time)
+ * - Recorded actual hours are always kept
  */
 export function mergeShifts(
   existing: Shift[],
@@ -88,7 +88,7 @@ export function mergeShifts(
   return { shifts, events };
 }
 
-/** 보관된 다른 출처 버전과 현재 시간을 맞바꾼다 */
+/** Swap the current times with the stored version from the other source */
 export function swapAlt(shift: Shift): Shift {
   if (!shift.alt) return shift;
   const { alt } = shift;

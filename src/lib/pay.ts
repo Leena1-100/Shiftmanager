@@ -19,7 +19,7 @@ export function breaksFor(spanMinutes: number, tiers: BreakTier[]): BreakAllowan
   };
 }
 
-/** 근무일 00:00 기준 분 단위 시각의 수당 구간 */
+/** Penalty band for a minute offset from 00:00 on the shift date */
 export function bandAt(date: string, minute: number, publicHoliday: boolean): Band {
   const dayOffset = Math.floor(minute / 1440);
   const m = minute - dayOffset * 1440;
@@ -39,9 +39,9 @@ export interface ShiftCalc {
   unpaidBreak: number;
   paidBreak: number;
   paidCount: number;
-  /** 돈 받는 분 (= span - 무급 휴식) */
+  /** Paid minutes (= span - unpaid break) */
   workedMinutes: number;
-  /** 최소 근무시간 보장으로 추가된 분 */
+  /** Minutes added to meet the minimum engagement */
   topUpMinutes: number;
   minutesByBand: Partial<Record<Band, number>>;
   pay: number;
@@ -53,9 +53,9 @@ export function round2(n: number): number {
 }
 
 /**
- * 시프트 1개 급여 계산 (분 단위).
- * mode 'planned' = 로스터 기준, 'effective' = 실제 기록이 있으면 실제, 없으면 예정.
- * 무급 휴식은 시프트 중간에 있다고 가정하고 그 구간을 빼고 분마다 배율을 적용한다.
+ * Pay for a single shift, calculated per minute.
+ * mode 'planned' = rostered times; 'effective' = actual times when recorded, otherwise rostered.
+ * The unpaid break is assumed to sit in the middle of the shift; every other minute gets its band multiplier.
  */
 export function calcShift(shift: Shift, settings: Settings, mode: 'planned' | 'effective' = 'effective'): ShiftCalc {
   const useActual = mode === 'effective' && !!shift.actual;

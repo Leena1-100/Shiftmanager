@@ -1,6 +1,7 @@
 const DAY_MS = 86_400_000;
 
-export const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
+export const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function parseISO(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
@@ -39,13 +40,13 @@ export function todayISO(): string {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** 분 → "HH:MM" (24시간, 자정 넘김은 다음날 시각으로 표시) */
+/** Minutes → "HH:MM" (24h; times past midnight show as next-day clock time) */
 export function fmtTime(min: number): string {
   const m = ((min % 1440) + 1440) % 1440;
   return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
 }
 
-/** "HH:MM" → 분 */
+/** "HH:MM" → minutes */
 export function parseHHMM(s: string): number | null {
   const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim());
   if (!m) return null;
@@ -60,9 +61,9 @@ export function fmtDuration(min: number): string {
   const a = Math.abs(Math.round(min));
   const h = Math.floor(a / 60);
   const m = a % 60;
-  if (h === 0) return `${sign}${m}분`;
-  if (m === 0) return `${sign}${h}시간`;
-  return `${sign}${h}시간 ${m}분`;
+  if (h === 0) return `${sign}${m}m`;
+  if (m === 0) return `${sign}${h}h`;
+  return `${sign}${h}h ${m}m`;
 }
 
 export function fmtMoney(n: number): string {
@@ -72,15 +73,15 @@ export function fmtMoney(n: number): string {
 
 export function fmtDateShort(iso: string): string {
   const d = parseISO(iso);
-  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+  return `${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]}`;
 }
 
-export function fmtDateKo(iso: string): string {
+export function fmtDateLong(iso: string): string {
   const d = parseISO(iso);
-  return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 (${WEEKDAY_KO[d.getUTCDay()]})`;
+  return `${WEEKDAY_SHORT[d.getUTCDay()]} ${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]}`;
 }
 
-/** 시작/종료 분을 정규화: 종료가 시작보다 같거나 이르면 다음날로 본다 */
+/** Normalise a start/end pair: an end at or before the start is treated as the next day */
 export function normalizeRange(start: number, end: number): [number, number] {
   let e = end;
   while (e <= start) e += 1440;

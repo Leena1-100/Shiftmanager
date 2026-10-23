@@ -17,7 +17,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('home');
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO(), settings.weekStartDay));
   const [editing, setEditing] = useState<Shift | 'new' | null>(null);
-  // 백업 불러오기/초기화 후 설정 입력칸을 새 값으로 다시 그리기 위한 키
+  // Bumped after restoring/resetting so the settings inputs re-render with the new values
   const [resetKey, setResetKey] = useState(0);
 
   const weekEnd = addDays(weekStart, 6);
@@ -51,22 +51,21 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-dot" />
-          시프트머니
+          ShiftMoney
         </div>
         {showWeekNav && (
           <div className="weeknav">
-            <button className="icon-btn" aria-label="이전 주" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+            <button className="icon-btn" aria-label="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>
               <ChevronLeft />
             </button>
             <button
-              className="week-label"
+              className={isThisWeek ? 'week-label current' : 'week-label'}
               onClick={() => setWeekStart(weekStartOf(todayISO(), settings.weekStartDay))}
-              title="이번 주로 이동"
+              title={isThisWeek ? 'This week' : 'Go to this week'}
             >
               {fmtDateShort(weekStart)} – {fmtDateShort(weekEnd)}
-              {isThisWeek && <span className="pill">이번 주</span>}
             </button>
-            <button className="icon-btn" aria-label="다음 주" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+            <button className="icon-btn" aria-label="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>
               <ChevronRight />
             </button>
           </div>
@@ -122,10 +121,10 @@ export default function App() {
       <nav className="tabbar">
         {(
           [
-            ['home', '이번 주', <HomeIcon key="h" />],
-            ['import', '시프트 가져오기', <ImportIcon key="i" />],
-            ['history', '수입 기록', <WalletIcon key="w" />],
-            ['settings', '설정', <GearIcon key="g" />],
+            ['home', 'This week', <HomeIcon key="h" />],
+            ['import', 'Import', <ImportIcon key="i" />],
+            ['history', 'Earnings', <WalletIcon key="w" />],
+            ['settings', 'Settings', <GearIcon key="g" />],
           ] as const
         ).map(([key, label, icon]) => (
           <button key={key} className={tab === key ? 'tab active' : 'tab'} onClick={() => setTab(key)}>

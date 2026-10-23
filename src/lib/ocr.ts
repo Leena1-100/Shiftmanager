@@ -1,6 +1,6 @@
 /**
- * 스크린샷/사진에서 텍스트 추출 (브라우저 안에서 Tesseract.js 로 처리, 서버 전송 없음).
- * 처음 실행 시 언어 데이터(영어 약 10MB, 한국어 추가 시 더 큼)를 내려받는다.
+ * Extract text from a screenshot/photo with Tesseract.js, entirely in the browser (nothing is uploaded).
+ * The first run downloads language data (~10MB for English, more with Korean).
  */
 export async function imageToText(
   file: File,

@@ -18,10 +18,10 @@ export function loadState(): AppState {
   }
 }
 
-/** 저장본/백업 파일을 현재 형식으로 맞춘다 (빠진 설정은 기본값) */
+/** Bring saved data / a backup file up to the current shape (missing settings get defaults) */
 export function reviveState(data: unknown): AppState {
   const d = data as Partial<AppState>;
-  if (!d || typeof d !== 'object' || !Array.isArray(d.shifts)) throw new Error('잘못된 데이터');
+  if (!d || typeof d !== 'object' || !Array.isArray(d.shifts)) throw new Error('Invalid data');
   const base = emptyState();
   return {
     version: 1,
@@ -41,7 +41,7 @@ export function usePersistentState(): [AppState, React.Dispatch<React.SetStateAc
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
     } catch {
-      /* 저장 실패해도 앱은 계속 동작 */
+      /* the app keeps working even if saving fails */
     }
   }, [state]);
   return [state, setState];

@@ -1,12 +1,12 @@
 import type { TaxMode } from '../types';
 
 /**
- * 2026–27 호주 소득세율 기준 주급 원천징수(PAYG) 추정.
- * 실제 ATO 원천징수표(Schedule 1)와 몇 달러 차이가 날 수 있는 "추정치"이다.
- * - 거주자 세율: $18,200까지 0%, $45,000까지 15%, $135,000까지 30%, $190,000까지 37%, 초과 45%
- * - 워킹홀리데이: $45,000까지 15%, 이후 거주자 세율과 동일
- * - 비거주자: $135,000까지 30%, $190,000까지 37%, 초과 45%
- * - 메디케어 레비 2% (저소득 감면 구간 반영, 워홀/비거주자는 제외)
+ * Weekly PAYG withholding estimate using 2026–27 Australian income tax rates.
+ * This is an estimate and may differ from the ATO Schedule 1 tables by a few dollars.
+ * - Resident: 0% to $18,200, 15% to $45,000, 30% to $135,000, 37% to $190,000, 45% above
+ * - Working holiday maker: 15% to $45,000, then resident rates
+ * - Non-resident: 30% to $135,000, 37% to $190,000, 45% above
+ * - Medicare levy 2% with the low-income phase-in (not applied to WHM / non-residents)
  */
 type Bracket = [upTo: number, rate: number];
 
@@ -58,7 +58,7 @@ export function annualTax(income: number, mode: TaxMode): number {
     case 'resident-tft':
       return bracketTax(income, RESIDENT) + medicare(income);
     case 'resident-no-tft':
-      // 면세 한도를 다른 직장에서 쓰고 있는 경우: 첫 1달러부터 15% 구간이 적용되도록 계산
+      // Tax-free threshold claimed elsewhere (e.g. second job): tax from the first dollar at 15%
       return bracketTax(income + TAX_FREE_THRESHOLD, RESIDENT) + income * 0.02;
     case 'whm':
       return bracketTax(income, WHM);
@@ -67,21 +67,21 @@ export function annualTax(income: number, mode: TaxMode): number {
   }
 }
 
-/** 주급에 대한 원천징수 추정액 (ATO처럼 달러 단위 반올림) */
+/** Estimated withholding for a weekly gross (rounded to whole dollars like the ATO tables) */
 export function weeklyWithholding(weeklyGross: number, mode: TaxMode): number {
   if (weeklyGross <= 0) return 0;
   return Math.round(annualTax(weeklyGross * 52, mode) / 52);
 }
 
-/** 이번 주에 세금 0원으로 더 벌 수 있는 금액 (면세 한도 신청한 거주자만 해당) */
+/** How much more can be earned this week with zero tax (residents claiming the threshold only) */
 export function taxFreeRoom(weeklyGross: number, mode: TaxMode): number | null {
   if (mode !== 'resident-tft') return null;
   return Math.max(0, WEEKLY_TAX_FREE - weeklyGross);
 }
 
 export const TAX_MODE_LABEL: Record<TaxMode, string> = {
-  'resident-tft': '거주자 · 면세 한도 신청 (Tax-free threshold O)',
-  'resident-no-tft': '거주자 · 면세 한도 미신청 (투잡 등)',
-  whm: '워킹홀리데이 (417/462 비자, 15%)',
-  'non-resident': '비거주자 (30%)',
+  'resident-tft': 'Resident · claiming the tax-free threshold',
+  'resident-no-tft': 'Resident · not claiming the threshold (second job)',
+  whm: 'Working holiday maker (417/462 visa, 15%)',
+  'non-resident': 'Non-resident (30%)',
 };

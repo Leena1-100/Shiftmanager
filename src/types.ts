@@ -1,6 +1,6 @@
 export type Source = 'tanda' | 'message' | 'manual';
 
-/** 실제 근무 기록 (분 단위). start/end 는 근무일 00:00 기준 분 (자정 넘기면 1440 이상). */
+/** Actual hours worked (minute precision). start/end are minutes from 00:00 on the shift date (>= 1440 past midnight). */
 export interface ActualWork {
   start: number;
   end: number;
@@ -8,7 +8,7 @@ export interface ActualWork {
   paidBreak: number;
 }
 
-/** 다른 출처에서 들어온, 적용되지 않은 시프트 버전 */
+/** A version of the shift from another source that is not currently applied */
 export interface AltVersion {
   source: Source;
   start: number;
@@ -18,17 +18,17 @@ export interface AltVersion {
 
 export interface Shift {
   id: string;
-  /** 시프트 시작일 YYYY-MM-DD */
+  /** Shift start date, YYYY-MM-DD */
   date: string;
-  /** 00:00 기준 분 */
+  /** Minutes from 00:00 */
   start: number;
-  /** 00:00 기준 분. 자정을 넘기면 1440 이상 */
+  /** Minutes from 00:00; >= 1440 when the shift runs past midnight */
   end: number;
-  /** 예정 시간을 결정한 출처 */
+  /** Source that the rostered times came from */
   source: Source;
-  /** 같은 시프트가 확인된 모든 출처 */
+  /** Every source that listed this shift */
   sources: Source[];
-  /** 로스터에 적힌 무급 휴식(분). 없으면 휴식 규칙으로 자동 계산 */
+  /** Unpaid break (minutes) written on the roster. When absent, the break rules decide. */
   unpaidBreak?: number;
   publicHoliday?: boolean;
   note?: string;
@@ -41,7 +41,7 @@ export type Band = 'weekday' | 'evening' | 'night' | 'saturday' | 'sunday' | 'pu
 export type Multipliers = Record<Band, number>;
 
 export interface BreakTier {
-  /** 시프트 길이(분)가 이 값 이상이면 적용 */
+  /** Applies when the shift length (minutes) is at least this */
   minMinutes: number;
   paidCount: number;
   paidLength: number;
@@ -60,7 +60,7 @@ export interface Settings {
   minEngagementMinutes: number;
   taxMode: TaxMode;
   superRate: number;
-  /** 0=일 1=월 ... */
+  /** 0 = Sunday, 1 = Monday, ... */
   weekStartDay: number;
   mergePriority: 'tanda' | 'message';
 }

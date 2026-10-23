@@ -1,28 +1,28 @@
-# 시프트머니 (Shift Money)
+# ShiftMoney
 
-호주 패스트푸드 파트타임/캐주얼 근무자를 위한 시프트 & 주급 관리 웹앱 (폰 홈 화면에 추가해서 앱처럼 사용).
+A shift and weekly pay tracker for part-time/casual fast food workers in Australia. It's a mobile web app — add it to your phone's home screen and use it like a native app.
 
-## 주요 기능
+## Features
 
-- **시프트 가져오기** — 탄다(Tanda) 시프트와 매니저 메시지를 각각 붙여넣거나 스크린샷을 올리면(브라우저 내 OCR) 날짜·시간·휴식을 자동으로 읽어서 **하나로 합칩니다.**
-  - 같은 시프트면 중복 제거, 시간이 다르면 우선 출처(설정: 메시지/탄다)를 적용하고 다른 버전은 카드에서 한 번에 바꿀 수 있음
-  - 지원 예: `Monday 27 Oct 9:00am - 3:00pm`, `Mon 9-3`, `Thu 5-11pm`, `27/10 10:00~16:00`, `화요일 오후 3시~9시 반`, `Break 30m`, `휴식 30분`
-- **휴식 자동 계산** — Fast Food Industry Award 기준 유급(10분)/무급(식사 30분) 휴식을 시프트 길이로 자동 계산 (설정에서 수정 가능)
-- **분 단위 급여 계산** — 평일/저녁(22–24시)/심야(0–6시)/토/일/공휴일 수당 배율을 분마다 적용
-- **실제 근무 입력** — 일하고 와서 출퇴근·휴식 시간을 분 단위로 입력하면 예정 대비 차이와 함께 재계산
-- **세금 추정** — 2026–27 세율 기준 주급 원천징수(PAYG) 추정, 실수령액, **세금 0원 구간(주 $350)까지 남은 금액/시간**, 워홀(15%)/비거주자 모드
-- **수입 기록** — 주별 기록, 입금 확인/실제 입금액 비교, 월 합계, 회계연도(7/1~) 누적과 연 면세 한도 진행률
-- 데이터는 기기 브라우저(localStorage)에만 저장, JSON 백업/복원 지원
+- **Import shifts** — paste your Tanda shifts and your manager's messages (or upload screenshots, read in-browser with OCR). Dates, times and breaks are detected and **merged into one roster**.
+  - Identical shifts are de-duplicated. When times differ, the preferred source (Settings: Message/Tanda) wins and the other version is kept so you can swap it in from the shift card.
+  - Understands e.g. `Monday 27 Oct 9:00am - 3:00pm`, `Mon 9-3`, `Thu 5-11pm`, `27/10 10:00-16:00`, `Break 30m`, and Korean-language messages.
+- **Automatic breaks** — paid (10 min) and unpaid (30 min meal) breaks from the shift length, based on the Fast Food Industry Award (editable).
+- **Per-minute pay** — weekday, evening (10pm–12am), night (12am–6am), Saturday, Sunday and public holiday multipliers applied minute by minute.
+- **Actual hours** — after a shift, enter clock-in/out and break minutes; pay is recalculated and compared with the roster.
+- **Tax estimate** — PAYG withholding estimate (2026–27 rates), take-home pay, and how much more you can earn this week before tax kicks in (~$350/week). Working holiday maker (15%) and non-resident modes.
+- **Earnings history** — weekly records, mark pay as received and compare with the actual deposit, monthly totals, financial-year (from 1 July) total vs the $18,200 tax-free threshold.
+- Data stays in the browser (localStorage) with JSON backup/restore.
 
-> 기본 수당 배율·휴식 규칙·세금은 일반적인 기준으로 만든 **추정치**입니다. 처음에 설정에서 본인 페이슬립의 시급과 배율을 맞춰주세요.
+> Default penalty rates, break rules and tax are **estimates** based on common rules. Set your own hourly rate and multipliers from your payslip in Settings first.
 
-## 실행
+## Development
 
 ```bash
 npm install
-npm run dev      # 개발 서버
-npm test         # 계산/파서 테스트
-npm run build    # dist/ 에 정적 파일 생성
+npm run dev      # dev server
+npm test         # pay / parser / merge / tax tests
+npm run build    # static build in dist/
 ```
 
-`main` 브랜치에 머지되면 GitHub Actions가 GitHub Pages로 배포합니다 (저장소 Settings → Pages → Source: **GitHub Actions** 선택 필요). 폰에서 페이지를 열고 "홈 화면에 추가"하면 앱처럼 쓸 수 있어요.
+Merging to `main` deploys to GitHub Pages via GitHub Actions (set repository Settings → Pages → Source to **GitHub Actions**). Open the page on your phone and choose "Add to Home Screen".

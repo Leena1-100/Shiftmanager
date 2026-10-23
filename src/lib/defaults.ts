@@ -1,10 +1,10 @@
 import type { BreakTier, Employment, Multipliers, Settings } from '../types';
 
 /**
- * Fast Food Industry Award 2010 (MA000003) 기준 기본 배율.
- * 실제 매장/계약 조건에 따라 다를 수 있으니 설정에서 수정 가능.
- * - 파트타임: 평일 100%, 월~금 22시~자정 110%, 월~금 자정~06시 115%, 토 125%, 일 150%, 공휴일 225%
- * - 캐주얼(25% 로딩 포함): 평일 125%, 저녁 135%, 심야 140%, 토 150%, 일 175%, 공휴일 250%
+ * Default penalty multipliers based on the Fast Food Industry Award 2010 (MA000003).
+ * Stores and agreements differ, so these are editable in Settings.
+ * - Part-time: weekday 100%, Mon–Fri 10pm–midnight 110%, Mon–Fri midnight–6am 115%, Sat 125%, Sun 150%, public holiday 225%
+ * - Casual (incl. 25% loading): weekday 125%, evening 135%, night 140%, Sat 150%, Sun 175%, public holiday 250%
  */
 export const DEFAULT_MULTIPLIERS: Record<Employment, Multipliers> = {
   parttime: { weekday: 1, evening: 1.1, night: 1.15, saturday: 1.25, sunday: 1.5, publicHoliday: 2.25 },
@@ -12,11 +12,11 @@ export const DEFAULT_MULTIPLIERS: Record<Employment, Multipliers> = {
 };
 
 /**
- * Fast Food Award 휴식 규정 기본값
- * - 4시간 이상: 유급 10분 1회
- * - 5시간 초과: 유급 10분 1회 + 무급 식사 30분
- * - 7시간 초과: 유급 10분 2회 + 무급 식사 30분
- * - 9시간 초과: 유급 10분 2회 + 무급 식사 60분
+ * Default Fast Food Award break entitlements
+ * - 4h or more: one paid 10-min rest break
+ * - Over 5h: one paid 10-min break + 30-min unpaid meal break
+ * - Over 7h: two paid 10-min breaks + 30-min unpaid meal break
+ * - Over 9h: two paid 10-min breaks + 60 min unpaid meal breaks
  */
 export const DEFAULT_BREAK_TIERS: BreakTier[] = [
   { minMinutes: 240, paidCount: 1, paidLength: 10, unpaidMinutes: 0 },
@@ -38,10 +38,10 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export const BAND_LABEL: Record<keyof Multipliers, string> = {
-  weekday: '평일',
-  evening: '평일 저녁 (22–24시)',
-  night: '평일 심야 (0–6시)',
-  saturday: '토요일',
-  sunday: '일요일',
-  publicHoliday: '공휴일',
+  weekday: 'Weekday',
+  evening: 'Weekday evening (10pm–12am)',
+  night: 'Weekday night (12am–6am)',
+  saturday: 'Saturday',
+  sunday: 'Sunday',
+  publicHoliday: 'Public holiday',
 };

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Settings, Shift } from '../types';
 import { breaksFor, calcShift } from '../lib/pay';
 import { newId } from '../lib/merge';
-import { fmtDateKo, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
+import { fmtDateLong, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
 
 interface Props {
   shift: Shift | null;
@@ -79,57 +79,57 @@ export default function ShiftEditor({ shift, defaultDate, settings, onClose, onS
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="sheet-grip" />
-        <h3>{shift ? fmtDateKo(shift.date) : '시프트 추가'}</h3>
+        <h3>{shift ? fmtDateLong(shift.date) : 'Add shift'}</h3>
 
         <div className="group">
-          <div className="group-title">시프트 (예정)</div>
+          <div className="group-title">Rostered shift</div>
           <label className="field">
-            <span>날짜</span>
+            <span>Date</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <div className="row2">
             <label className="field">
-              <span>시작</span>
+              <span>Start</span>
               <input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
             </label>
             <label className="field">
-              <span>종료</span>
+              <span>End</span>
               <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
             </label>
           </div>
           <div className="field">
-            <span>무급 휴식</span>
+            <span>Unpaid break</span>
             <div className="inline">
               <label className="check">
                 <input type="checkbox" checked={breakAuto} onChange={(e) => setBreakAuto(e.target.checked)} />
-                자동 ({rule.unpaidMinutes}분)
+                Auto ({rule.unpaidMinutes}m)
               </label>
               {!breakAuto && (
-                <input className="num" inputMode="numeric" value={unpaid} onChange={(e) => setUnpaid(e.target.value)} aria-label="무급 휴식(분)" />
+                <input className="num" inputMode="numeric" value={unpaid} onChange={(e) => setUnpaid(e.target.value)} aria-label="Unpaid break (minutes)" />
               )}
-              {!breakAuto && <span className="muted">분</span>}
+              {!breakAuto && <span className="muted">min</span>}
             </div>
           </div>
           <label className="check">
             <input type="checkbox" checked={ph} onChange={(e) => setPh(e.target.checked)} />
-            공휴일 (Public holiday)
+            Public holiday
           </label>
           <label className="field">
-            <span>메모</span>
-            <input value={note} placeholder="예: 매니저 Sam 요청" onChange={(e) => setNote(e.target.value)} />
+            <span>Note</span>
+            <input value={note} placeholder="e.g. covering for Sam" onChange={(e) => setNote(e.target.value)} />
           </label>
           {planCalc && (
             <p className="calc-line">
-              {fmtDuration(planCalc.workedMinutes)} 유급 · 유급휴식 {planCalc.paidBreak}분 · <b>{fmtMoney(planCalc.pay)}</b>
+              {fmtDuration(planCalc.workedMinutes)} paid · paid break {planCalc.paidBreak}m · <b>{fmtMoney(planCalc.pay)}</b>
             </p>
           )}
         </div>
 
         <div className="group mint">
           <div className="group-title">
-            실제 근무 (분 단위)
+            Actual hours (to the minute)
             <label className="switch">
-              <input type="checkbox" checked={hasActual} onChange={(e) => setHasActual(e.target.checked)} />
+              <input type="checkbox" checked={hasActual} onChange={(e) => setHasActual(e.target.checked)} aria-label="Log actual hours" />
               <span />
             </label>
           </div>
@@ -137,27 +137,27 @@ export default function ShiftEditor({ shift, defaultDate, settings, onClose, onS
             <>
               <div className="row2">
                 <label className="field">
-                  <span>출근 (Clock in)</span>
+                  <span>Clock in</span>
                   <input type="time" value={aStart} onChange={(e) => setAStart(e.target.value)} />
                 </label>
                 <label className="field">
-                  <span>퇴근 (Clock out)</span>
+                  <span>Clock out</span>
                   <input type="time" value={aEnd} onChange={(e) => setAEnd(e.target.value)} />
                 </label>
               </div>
               <div className="row2">
                 <label className="field">
-                  <span>무급 휴식(분)</span>
-                  <input inputMode="numeric" placeholder={`자동 ${aRule?.unpaidMinutes ?? 0}`} value={aUnpaid} onChange={(e) => setAUnpaid(e.target.value)} />
+                  <span>Unpaid break (min)</span>
+                  <input inputMode="numeric" placeholder={`Auto ${aRule?.unpaidMinutes ?? 0}`} value={aUnpaid} onChange={(e) => setAUnpaid(e.target.value)} />
                 </label>
                 <label className="field">
-                  <span>유급 휴식(분)</span>
-                  <input inputMode="numeric" placeholder={`자동 ${aRule?.paidMinutes ?? 0}`} value={aPaid} onChange={(e) => setAPaid(e.target.value)} />
+                  <span>Paid break (min)</span>
+                  <input inputMode="numeric" placeholder={`Auto ${aRule?.paidMinutes ?? 0}`} value={aPaid} onChange={(e) => setAPaid(e.target.value)} />
                 </label>
               </div>
               {effCalc && planCalc && (
                 <p className="calc-line">
-                  실제 {fmtDuration(effCalc.workedMinutes)} · <b>{fmtMoney(effCalc.pay)}</b>
+                  Actual {fmtDuration(effCalc.workedMinutes)} · <b>{fmtMoney(effCalc.pay)}</b>
                   {effCalc.pay !== planCalc.pay && (
                     <span className={effCalc.pay > planCalc.pay ? 'up' : 'down'}>
                       {' '}
@@ -169,21 +169,21 @@ export default function ShiftEditor({ shift, defaultDate, settings, onClose, onS
               )}
             </>
           ) : (
-            <p className="small muted">일 끝나고 탄다 타임시트의 출퇴근/휴식 시간을 분 단위로 입력하면 금액이 다시 계산돼요.</p>
+            <p className="small muted">After your shift, enter the clock-in/out and break times from your Tanda timesheet to recalculate the pay.</p>
           )}
         </div>
 
         <div className="sheet-actions">
           {shift && (
-            <button className="danger" onClick={() => confirm('이 시프트를 삭제할까요?') && onDelete(shift.id)}>
-              삭제
+            <button className="danger" onClick={() => confirm('Delete this shift?') && onDelete(shift.id)}>
+              Delete
             </button>
           )}
           <button className="secondary" onClick={onClose}>
-            취소
+            Cancel
           </button>
           <button className="primary" disabled={!draft} onClick={() => draft && onSave(draft)}>
-            저장
+            Save
           </button>
         </div>
       </div>

@@ -6,7 +6,7 @@ export interface ParsedShift {
   start: number;
   end: number;
   unpaidBreak?: number;
-  /** 날짜를 텍스트에서 못 찾아 추측했는지 */
+  /** True when no date was found in the text and one had to be guessed */
   dateGuessed: boolean;
   raw: string;
   source: Source;
@@ -20,12 +20,13 @@ const MONTH_RE = '(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?';
 const EN_WEEKDAYS: [RegExp, number][] = [
   [/^sun/, 0], [/^mon/, 1], [/^tue/, 2], [/^wed/, 3], [/^thu/, 4], [/^fri/, 5], [/^sat/, 6],
 ];
+// Korean weekday / time words are kept so messages written in Korean can still be parsed
 const KO_WEEKDAYS: Record<string, number> = { 일: 0, 월: 1, 화: 2, 수: 3, 목: 4, 금: 5, 토: 6 };
 
 const EN_WEEKDAY_RE = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tues?|wed|thur?s?|fri|sat|sun)\b\.?/i;
 const KO_WEEKDAY_RE = /([월화수목금토일])요일|[(\[]([월화수목금토일])[)\]]|^\s*([월화수목금토일])(?=[\s:,.]|$)/;
 
-// 시각 하나: (오전|오후)? H(:MM)? (시 (반|MM분)?)? (am|pm)?
+// One time: (Korean am/pm)? H(:MM)? (Korean hour marker (half | MM minutes)?)? (am|pm)?
 const TIME = String.raw`(오전|오후)?\s*(\d{1,2})(?:\s*[:.]\s*(\d{2}))?\s*(?:(시)\s*(?:(반)|(\d{1,2})\s*분)?)?\s*(?:(a\.?m\.?|p\.?m\.?|a|p)(?![a-z]))?`;
 const RANGE_RE = new RegExp(
   String.raw`(?<![\d$])${TIME}\s*(?:-|~|to|until|till|부터|에서)\s*${TIME}(?![\d%])`,
@@ -65,7 +66,7 @@ function to24(t: TimeParts): number {
   return h * 60 + t.minute;
 }
 
-/** 두 시각에서 am/pm 을 추론해 [start, end] (분) 반환 */
+/** Infer am/pm for two times and return [start, end] in minutes */
 export function resolveRange(a: TimeParts, b: TimeParts): [number, number] {
   const is24h = (t: TimeParts) => t.zeroPadded || t.hour >= 13 || t.hour === 0;
   if (a.mer && b.mer) return normalizeRange(to24(a), to24(b));
@@ -82,7 +83,7 @@ export function resolveRange(a: TimeParts, b: TimeParts): [number, number] {
   const start = to24(a);
   let end = to24({ ...b, mer: null });
   if (!a.mer && (is24h(a) || is24h(b))) return normalizeRange(start, end);
-  // 끝 시각에 am/pm 이 없고 12시간제로 보이는 경우: 시작보다 이르면 오후로 본다
+  // End has no am/pm and looks like 12-hour time: if it is before the start, treat it as pm
   if (end <= start && b.hour <= 12) {
     const pmEnd = end + 12 * 60;
     if (pmEnd > start) end = pmEnd;
@@ -90,14 +91,14 @@ export function resolveRange(a: TimeParts, b: TimeParts): [number, number] {
   return normalizeRange(start, end);
 }
 
-/** 기준 날짜와 가장 가까운 연도로 월/일 → ISO */
+/** Month/day → ISO, picking the year closest to the reference date */
 function nearestDate(month: number, day: number, ref: string): string | null {
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
   const y = Number(ref.slice(0, 4));
   let best: string | null = null;
   for (const yy of [y - 1, y, y + 1]) {
     const iso = makeISO(yy, month, day);
-    if (Number(iso.slice(5, 7)) !== month) continue; // 31일 없는 달 등
+    if (Number(iso.slice(5, 7)) !== month) continue; // e.g. 31st in a 30-day month
     if (!best || Math.abs(diffDays(iso, ref)) < Math.abs(diffDays(best, ref))) best = iso;
   }
   return best;
@@ -109,7 +110,7 @@ interface DateHit {
   stripped: string;
 }
 
-/** 한 줄에서 날짜/요일을 찾아내고, 시간 파싱에 방해되지 않도록 그 부분을 지운 문자열을 반환 */
+/** Find a date/weekday in a line and return the line with it blanked out so it can't be mistaken for a time */
 export function extractDate(line: string, refDate: string): DateHit {
   let s = line;
   let date: string | null = null;
@@ -139,7 +140,7 @@ export function extractDate(line: string, refDate: string): DateHit {
     const mon = MONTHS[m[1].toLowerCase()];
     return m[3] ? makeISO(+m[3], mon, +m[2]) : nearestDate(mon, +m[2], refDate);
   });
-  // 호주식 dd/mm(/yyyy)
+  // Australian dd/mm(/yyyy)
   take(/(?<![\d:])(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?(?![\d:])/, (m) => {
     if (m[3]) {
       const y = m[3].length === 2 ? 2000 + +m[3] : +m[3];
@@ -185,8 +186,8 @@ function normalize(text: string): string {
 }
 
 /**
- * 탄다/메시지 텍스트에서 시프트 목록 추출.
- * @param weekStart 이 주 기준으로 요일만 있는 경우 날짜를 정한다.
+ * Extract shifts from Tanda or message text.
+ * @param weekStart lines that only name a weekday are placed in this week
  */
 export function parseShifts(text: string, source: Source, weekStart: string): ParsedShift[] {
   const out: ParsedShift[] = [];
@@ -228,7 +229,7 @@ export function parseShifts(text: string, source: Source, weekStart: string): Pa
       if (brk !== null) found.forEach((f) => (f.unpaidBreak = brk));
       out.push(...found);
     } else if (brk !== null && out.length && out[out.length - 1].unpaidBreak === undefined) {
-      // "Break 30m" 처럼 시프트 다음 줄에 휴식이 적힌 경우
+      // Break written on the line after the shift, e.g. "Break 30m"
       out[out.length - 1].unpaidBreak = brk;
     }
   }

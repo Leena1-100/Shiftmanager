@@ -2,7 +2,7 @@ import type { AppState, Band, BreakTier, Employment, Settings, TaxMode } from '.
 import { BAND_LABEL, DEFAULT_BREAK_TIERS, DEFAULT_MULTIPLIERS } from '../lib/defaults';
 import { TAX_MODE_LABEL } from '../lib/tax';
 import { emptyState, reviveState } from '../lib/storage';
-import { WEEKDAY_KO, fmtDuration, todayISO } from '../lib/time';
+import { WEEKDAY_SHORT, fmtDuration, todayISO } from '../lib/time';
 import { SOURCE_LABEL } from './HomeTab';
 
 interface Props {
@@ -35,27 +35,27 @@ export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) 
     if (!file) return;
     try {
       const next = reviveState(JSON.parse(await file.text()));
-      if (confirm(`시프트 ${next.shifts.length}개가 있는 백업으로 바꿀까요? 현재 데이터는 덮어써져요.`)) onReplaceState(next);
+      if (confirm(`Restore this backup with ${next.shifts.length} shifts? Your current data will be overwritten.`)) onReplaceState(next);
     } catch {
-      alert('백업 파일을 읽지 못했어요.');
+      alert("Couldn't read the backup file.");
     }
   };
 
   return (
     <div className="stack">
       <section className="card">
-        <div className="card-title">급여</div>
+        <div className="card-title">Pay</div>
         <label className="field">
-          <span>기본 시급 (세전, $/시간)</span>
+          <span>Base hourly rate (before tax, $/h)</span>
           <input
             inputMode="decimal"
             defaultValue={settings.baseRate}
             onChange={(e) => onUpdate({ baseRate: numOr(e.target.value, settings.baseRate) })}
           />
         </label>
-        <p className="small muted">페이슬립의 Ordinary hours 시급을 넣으세요. 주니어 시급이면 그 금액 그대로 넣으면 돼요.</p>
+        <p className="small muted">Use the Ordinary hours rate from your payslip. If you're on a junior rate, enter that amount.</p>
         <div className="field">
-          <span>고용 형태</span>
+          <span>Employment type</span>
           <div className="seg small">
             {(['parttime', 'casual'] as Employment[]).map((e) => (
               <button
@@ -63,13 +63,13 @@ export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) 
                 className={settings.employment === e ? 'on' : ''}
                 onClick={() => onUpdate({ employment: e, multipliers: { ...DEFAULT_MULTIPLIERS[e] } })}
               >
-                {e === 'parttime' ? '파트타임' : '캐주얼'}
+                {e === 'parttime' ? 'Part-time' : 'Casual'}
               </button>
             ))}
           </div>
         </div>
         <div className="field">
-          <span>수당 배율 (Penalty rates)</span>
+          <span>Penalty rates (multiplier)</span>
           <ul className="mult-list">
             {(Object.keys(BAND_LABEL) as Band[]).map((b) => (
               <li key={b}>
@@ -86,10 +86,10 @@ export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) 
               </li>
             ))}
           </ul>
-          <p className="small muted">기본값: Fast Food Industry Award 2010. 매장 계약(EA)이 다르면 페이슬립에 맞게 바꿔주세요.</p>
+          <p className="small muted">Defaults follow the Fast Food Industry Award 2010. If your store uses a different agreement, match your payslip.</p>
         </div>
         <label className="field">
-          <span>최소 근무시간 보장 (분, 0 = 사용 안 함)</span>
+          <span>Minimum engagement (minutes, 0 = off)</span>
           <input
             inputMode="numeric"
             value={settings.minEngagementMinutes}
@@ -99,27 +99,27 @@ export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) 
       </section>
 
       <section className="card">
-        <div className="card-title">휴식 규칙</div>
-        <p className="small muted">시프트 길이에 따라 자동으로 유급/무급 휴식을 계산해요. 무급 휴식만 급여에서 빠져요.</p>
+        <div className="card-title">Break rules</div>
+        <p className="small muted">Paid and unpaid breaks are worked out from the shift length. Only unpaid breaks are deducted from pay.</p>
         <ul className="tier-list">
           {settings.breakTiers.map((t, i) => (
             <li key={i}>
               <label>
                 <input className="num" inputMode="numeric" value={t.minMinutes} onChange={(e) => setTier(i, { minMinutes: Math.round(numOr(e.target.value, t.minMinutes)) })} />
-                <span className="small muted">분({fmtDuration(t.minMinutes)}) 이상</span>
+                <span className="small muted">min ({fmtDuration(t.minMinutes)}) or longer</span>
               </label>
               <label>
-                유급
+                Paid
                 <input className="num xs" inputMode="numeric" value={t.paidCount} onChange={(e) => setTier(i, { paidCount: Math.round(numOr(e.target.value, t.paidCount)) })} />
                 ×
-                <input className="num xs" inputMode="numeric" value={t.paidLength} onChange={(e) => setTier(i, { paidLength: Math.round(numOr(e.target.value, t.paidLength)) })} />분
+                <input className="num xs" inputMode="numeric" value={t.paidLength} onChange={(e) => setTier(i, { paidLength: Math.round(numOr(e.target.value, t.paidLength)) })} />m
               </label>
               <label>
-                무급
-                <input className="num xs" inputMode="numeric" value={t.unpaidMinutes} onChange={(e) => setTier(i, { unpaidMinutes: Math.round(numOr(e.target.value, t.unpaidMinutes)) })} />분
+                Unpaid
+                <input className="num xs" inputMode="numeric" value={t.unpaidMinutes} onChange={(e) => setTier(i, { unpaidMinutes: Math.round(numOr(e.target.value, t.unpaidMinutes)) })} />m
               </label>
               <button className="link" onClick={() => onUpdate({ breakTiers: settings.breakTiers.filter((_, j) => j !== i) })}>
-                삭제
+                Remove
               </button>
             </li>
           ))}
@@ -129,16 +129,16 @@ export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) 
             className="ghost-btn"
             onClick={() => onUpdate({ breakTiers: [...settings.breakTiers, { minMinutes: 600, paidCount: 0, paidLength: 10, unpaidMinutes: 0 }] })}
           >
-            구간 추가
+            Add tier
           </button>
           <button className="link" onClick={() => onUpdate({ breakTiers: DEFAULT_BREAK_TIERS.map((t) => ({ ...t })) })}>
-            기본값으로
+            Reset to defaults
           </button>
         </div>
       </section>
 
       <section className="card">
-        <div className="card-title">세금</div>
+        <div className="card-title">Tax</div>
         <div className="radio-list">
           {(Object.keys(TAX_MODE_LABEL) as TaxMode[]).map((m) => (
             <label key={m} className="check">
@@ -148,30 +148,30 @@ export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) 
           ))}
         </div>
         <label className="field">
-          <span>슈퍼애뉴에이션 (%)</span>
+          <span>Superannuation (%)</span>
           <input
             inputMode="decimal"
             defaultValue={settings.superRate * 100}
             onChange={(e) => onUpdate({ superRate: numOr(e.target.value, settings.superRate * 100) / 100 })}
           />
         </label>
-        <p className="small muted">세금은 2026–27 세율로 계산한 추정치예요. 실제 원천징수와 몇 달러 차이 날 수 있어요.</p>
+        <p className="small muted">Tax is an estimate using 2026–27 rates and may differ from actual withholding by a few dollars.</p>
       </section>
 
       <section className="card">
-        <div className="card-title">주 / 시프트 합치기</div>
+        <div className="card-title">Pay week &amp; merging</div>
         <div className="field">
-          <span>급여 주 시작 요일</span>
+          <span>Pay week starts on</span>
           <div className="seg small">
             {[1, 2, 3, 4, 5, 6, 0].map((d) => (
               <button key={d} className={settings.weekStartDay === d ? 'on' : ''} onClick={() => onUpdate({ weekStartDay: d })}>
-                {WEEKDAY_KO[d]}
+                {WEEKDAY_SHORT[d]}
               </button>
             ))}
           </div>
         </div>
         <div className="field">
-          <span>같은 날 시간이 다를 때 우선</span>
+          <span>When times differ on the same day, prefer</span>
           <div className="seg small">
             {(['message', 'tanda'] as const).map((p) => (
               <button key={p} className={settings.mergePriority === p ? 'on' : ''} onClick={() => onUpdate({ mergePriority: p })}>
@@ -183,18 +183,18 @@ export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) 
       </section>
 
       <section className="card">
-        <div className="card-title">데이터</div>
-        <p className="small muted">데이터는 이 기기 브라우저에만 저장돼요. 폰을 바꾸기 전엔 백업하세요.</p>
+        <div className="card-title">Data</div>
+        <p className="small muted">Data is stored only in this device's browser. Back it up before switching phones.</p>
         <div className="inline wrap">
           <button className="ghost-btn" onClick={exportData}>
-            백업 파일 저장
+            Save backup
           </button>
           <label className="ghost-btn file">
-            백업 불러오기
+            Restore backup
             <input type="file" accept="application/json" hidden onChange={(e) => importData(e.target.files?.[0])} />
           </label>
-          <button className="link danger-text" onClick={() => confirm('모든 시프트와 설정을 지울까요?') && onReplaceState(emptyState())}>
-            전체 초기화
+          <button className="link danger-text" onClick={() => confirm('Delete all shifts and settings?') && onReplaceState(emptyState())}>
+            Reset everything
           </button>
         </div>
       </section>

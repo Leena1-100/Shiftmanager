@@ -29,7 +29,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -59,7 +59,7 @@ button:disabled {
   padding-bottom: calc(84px + env(safe-area-inset-bottom));
 }
 
-/* ---------- 상단 ---------- */
+/* ---------- Top bar ---------- */
 .topbar {
   position: sticky;
   top: 0;
@@ -110,6 +110,7 @@ button:disabled {
 }
 
 .week-label {
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -118,13 +119,8 @@ button:disabled {
   padding: 6px 4px;
 }
 
-.pill {
-  font-size: 11px;
-  font-weight: 700;
+.week-label.current {
   color: var(--mint-strong);
-  background: var(--mint-soft);
-  padding: 3px 7px;
-  border-radius: 99px;
 }
 
 .content {
@@ -143,7 +139,7 @@ button:disabled {
   gap: 10px;
 }
 
-/* ---------- 메인 카드 ---------- */
+/* ---------- Hero card ---------- */
 .hero {
   background: linear-gradient(140deg, #22d1ad 0%, #14b79a 100%);
   color: #fff;
@@ -243,7 +239,7 @@ button:disabled {
   color: #fff;
 }
 
-/* ---------- 통계 ---------- */
+/* ---------- Stats ---------- */
 .stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -353,7 +349,7 @@ p {
   color: var(--down);
 }
 
-/* ---------- 버튼 ---------- */
+/* ---------- Buttons ---------- */
 .primary {
   background: var(--mint);
   color: #fff;
@@ -441,7 +437,7 @@ p {
   flex-wrap: wrap;
 }
 
-/* ---------- 시프트 카드 ---------- */
+/* ---------- Shift card ---------- */
 .shift {
   display: flex;
   gap: 12px;
@@ -538,11 +534,7 @@ p {
 
 .shift-actual,
 .shift-todo {
-  display: flex;
-  align-items: center;
-  gap: 4px;
   font-size: 12px;
-  flex-wrap: wrap;
 }
 
 .shift-actual {
@@ -556,7 +548,8 @@ p {
   color: var(--sub);
 }
 
-.shift-actual svg {
+.shift-actual svg,
+.shift-todo svg {
   vertical-align: -2px;
 }
 
@@ -615,8 +608,8 @@ p {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- 입력 ---------- */
-/* :where 로 우선순위를 낮춰 .num 같은 개별 클래스가 덮어쓸 수 있게 */
+/* ---------- Inputs ---------- */
+/* :where keeps specificity at zero so classes like .num can override it */
 :where(textarea, input:not([type='checkbox']):not([type='radio'])) {
   width: 100%;
   border: 1.5px solid var(--line);
@@ -714,7 +707,7 @@ input[type='radio'] {
   color: #c77712;
 }
 
-/* ---------- 가져오기 미리보기 ---------- */
+/* ---------- Import preview ---------- */
 .preview {
   list-style: none;
   margin: 0;
@@ -795,7 +788,7 @@ input[type='radio'] {
   gap: 4px;
 }
 
-/* ---------- 수입 기록 ---------- */
+/* ---------- Earnings ---------- */
 .bars {
   display: flex;
   align-items: flex-end;
@@ -860,7 +853,7 @@ input[type='radio'] {
   padding: 0 16px 14px;
 }
 
-/* ---------- 설정 ---------- */
+/* ---------- Settings ---------- */
 .mult-list,
 .tier-list {
   list-style: none;
@@ -898,7 +891,7 @@ input[type='radio'] {
   gap: 4px;
 }
 
-/* ---------- 바텀시트 ---------- */
+/* ---------- Bottom sheet ---------- */
 .sheet-backdrop {
   position: fixed;
   inset: 0;
@@ -1020,7 +1013,7 @@ input[type='radio'] {
   gap: 8px;
 }
 
-/* ---------- 하단 탭 ---------- */
+/* ---------- Tab bar ---------- */
 .tabbar {
   position: fixed;
   left: 50%;

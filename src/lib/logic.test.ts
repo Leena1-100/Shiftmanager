@@ -6,7 +6,7 @@ import { weeklyWithholding, annualTax } from './tax';
 import { DEFAULT_SETTINGS, DEFAULT_BREAK_TIERS } from './defaults';
 import type { Shift } from '../types';
 
-const WEEK = '2026-10-26'; // 월요일
+const WEEK = '2026-10-26'; // Monday
 const hm = (h: number, m = 0) => h * 60 + m;
 const pick = (r: { date: string; start: number; end: number; unpaidBreak?: number }) => ({
   date: r.date,
@@ -16,7 +16,7 @@ const pick = (r: { date: string; start: number; end: number; unpaidBreak?: numbe
 });
 
 describe('parseShifts', () => {
-  it('Tanda 형식 (날짜 줄 + 시간 줄 + 휴식 줄)', () => {
+  it('Tanda format (date line + time line + break line)', () => {
     const text = `Monday 27 Oct
 9:00am - 3:00pm
 Crew Member · Break 30m
@@ -29,7 +29,7 @@ Wed 29 Oct
     ]);
   });
 
-  it('메시지: 요일만 + am/pm 생략', () => {
+  it('message: weekday only, am/pm omitted', () => {
     const text = `Hi! shifts this week
 Mon 9-3
 Thu 5-11pm
@@ -41,7 +41,7 @@ Sat 10:30-4`;
     ]);
   });
 
-  it('한국어 메시지와 dd/mm', () => {
+  it('Korean-language message and dd/mm dates', () => {
     const text = `화요일 오후 3시~9시 반
 10월 30일 (금) 10:00~16:00 휴식 30분
 1/11 17:00-01:00`;
@@ -52,14 +52,14 @@ Sat 10:30-4`;
     ]);
   });
 
-  it('유급 휴식 언급은 무급 휴식으로 잡지 않는다', () => {
+  it('a paid break mention is not taken as an unpaid break', () => {
     const r = parseShifts('Fri 9am-1pm 10 min paid break', 'tanda', WEEK);
     expect(r[0].unpaidBreak).toBeUndefined();
   });
 });
 
 describe('breaks & pay', () => {
-  it('휴식 규칙 구간', () => {
+  it('break rule tiers', () => {
     expect(breaksFor(hm(3, 59), DEFAULT_BREAK_TIERS)).toEqual({ paidCount: 0, paidMinutes: 0, unpaidMinutes: 0 });
     expect(breaksFor(hm(4), DEFAULT_BREAK_TIERS).paidMinutes).toBe(10);
     expect(breaksFor(hm(5), DEFAULT_BREAK_TIERS).unpaidMinutes).toBe(0);
@@ -70,25 +70,25 @@ describe('breaks & pay', () => {
   const base: Shift = { id: 'x', date: '2026-10-27', start: hm(9), end: hm(15), source: 'tanda', sources: ['tanda'] };
   const settings = { ...DEFAULT_SETTINGS, baseRate: 30 };
 
-  it('평일 6시간 = 무급 30분 빼고 5.5시간', () => {
+  it('6h weekday shift = 5.5h paid after 30m unpaid break', () => {
     const c = calcShift(base, settings);
     expect(c.workedMinutes).toBe(330);
     expect(c.pay).toBe(165);
   });
 
-  it('토요일 125%', () => {
+  it('Saturday 125%', () => {
     const c = calcShift({ ...base, date: '2026-10-31' }, settings);
     expect(c.pay).toBe(206.25);
   });
 
-  it('평일 밤 22시 이후 110%, 자정 넘어 토요일 125%', () => {
-    // 금 20:00 ~ 토 01:00, 5시간 → 유급휴식만 (무급 없음)
+  it('weekday after 10pm 110%, past midnight into Saturday 125%', () => {
+    // Fri 20:00 – Sat 01:00, 5h → paid break only (no unpaid break)
     const c = calcShift({ ...base, date: '2026-10-30', start: hm(20), end: hm(25) }, settings);
     expect(c.minutesByBand).toEqual({ weekday: 120, evening: 120, saturday: 60 });
     expect(c.pay).toBe(round(2 * 30 + 2 * 33 + 37.5));
   });
 
-  it('실제 근무 분 단위 반영', () => {
+  it('actual hours applied to the minute', () => {
     const c = calcShift({ ...base, actual: { start: hm(8, 57), end: hm(15, 12), unpaidBreak: 32, paidBreak: 10 } }, settings);
     expect(c.usedActual).toBe(true);
     expect(c.workedMinutes).toBe(375 - 32);
@@ -98,7 +98,7 @@ describe('breaks & pay', () => {
 });
 
 describe('merge', () => {
-  it('탄다 + 메시지 합치기: 중복, 추가, 우선순위 교체', () => {
+  it('merging Tanda + message: duplicate, add, priority replace', () => {
     const tanda = parseShifts('Mon 27 Oct 9am-3pm\nTue 28 Oct 9am-3pm', 'tanda', WEEK);
     const first = mergeShifts([], tanda, 'message');
     expect(first.shifts).toHaveLength(2);
@@ -114,7 +114,7 @@ describe('merge', () => {
     expect(swapAlt(tue).start).toBe(hm(9));
   });
 
-  it('탄다 우선이면 기존 탄다 시간을 유지', () => {
+  it('with Tanda priority the Tanda times are kept', () => {
     const tanda = mergeShifts([], parseShifts('Tue 27 Oct 9am-3pm', 'tanda', WEEK), 'tanda').shifts;
     const { shifts, events } = mergeShifts(tanda, parseShifts('Tue 10-3', 'message', WEEK), 'tanda');
     expect(events[0].action).toBe('kept');
@@ -123,13 +123,13 @@ describe('merge', () => {
 });
 
 describe('tax', () => {
-  it('면세 한도 이하 주급은 세금 0', () => {
+  it('no tax below the weekly tax-free threshold', () => {
     expect(weeklyWithholding(340, 'resident-tft')).toBe(0);
   });
-  it('워홀은 첫 달러부터 15%', () => {
+  it('WHM pays 15% from the first dollar', () => {
     expect(weeklyWithholding(500, 'whm')).toBe(75);
   });
-  it('거주자 연간 세금', () => {
+  it('resident annual tax', () => {
     expect(annualTax(40_000, 'resident-tft')).toBeCloseTo((40_000 - 18_200) * 0.15 + 800, 2);
   });
 });

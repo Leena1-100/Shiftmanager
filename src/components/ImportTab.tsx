@@ -3,7 +3,7 @@ import type { Settings, Shift, Source } from '../types';
 import { parseShifts, type ParsedShift } from '../lib/parser';
 import { mergeShifts, type MergeAction } from '../lib/merge';
 import { imageToText } from '../lib/ocr';
-import { WEEKDAY_KO, dayOfWeek, fmtDateShort, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
+import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
 import { ImageIcon } from './Icons';
 import { SOURCE_LABEL } from './HomeTab';
 
@@ -20,24 +20,24 @@ interface Row extends ParsedShift {
 }
 
 const PLACEHOLDER: Record<'tanda' | 'message', string> = {
-  tanda: `탄다 앱/이메일의 시프트 내용을 붙여넣거나 스크린샷을 올리세요
-예)
+  tanda: `Paste shifts from the Tanda app/email, or upload a screenshot
+e.g.
 Monday 27 Oct
 9:00am - 3:00pm
 Break 30m
 Wed 29 Oct 4:30pm – 10:15pm`,
-  message: `매니저 문자/카톡 내용을 붙여넣으세요
-예)
+  message: `Paste the text/chat from your manager
+e.g.
 Mon 9-3
 Thu 5-11pm
-토요일 오전 10시~오후 4시`,
+Sat 10:30am - 4pm`,
 };
 
 const ACTION_LABEL: Record<MergeAction, string> = {
-  added: '새로 추가',
-  duplicate: '이미 있음 (같은 시간)',
-  replaced: '시간 다름 → 새 시간 적용',
-  kept: '시간 다름 → 기존 유지',
+  added: 'New',
+  duplicate: 'Already there (same times)',
+  replaced: 'Different times → new times applied',
+  kept: 'Different times → existing kept',
 };
 
 export default function ImportTab({ settings, allShifts, weekStart, onApply }: Props) {
@@ -66,7 +66,7 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
         setTexts((t) => ({ ...t, [source]: (t[source] ? t[source] + '\n' : '') + text.trim() }));
       }
     } catch (e) {
-      setError('이미지 인식에 실패했어요. 인터넷 연결을 확인하거나 텍스트를 직접 붙여넣어 주세요.');
+      setError("Couldn't read the image. Check your internet connection, or paste the text instead.");
       console.error(e);
     } finally {
       setOcr(null);
@@ -75,7 +75,7 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
 
   const merged = useMemo(() => {
     if (!rows) return null;
-    // 탄다를 먼저 넣고 메시지로 덮어써야 우선순위 비교가 자연스럽다
+    // Feed Tanda first, then messages, so the priority comparison reads naturally
     const incoming = rows
       .filter((r) => r.include)
       .sort((a, b) => (a.source === b.source ? 0 : a.source === 'tanda' ? -1 : 1))
@@ -94,15 +94,15 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
   return (
     <div className="stack">
       <p className="small muted pad">
-        탄다와 메시지를 각각 넣으면 하나로 합쳐요. 같은 날 시간이 다르면{' '}
-        <b>{SOURCE_LABEL[settings.mergePriority]}</b> 쪽을 우선 적용하고, 다른 버전은 시프트 카드에서 언제든 바꿀 수 있어요.
+        Add your Tanda shifts and message shifts and they'll be merged into one roster. When the same day has different times,{' '}
+        <b>{SOURCE_LABEL[settings.mergePriority]}</b> wins, and you can switch to the other version from the shift card any time.
       </p>
 
       {(['tanda', 'message'] as const).map((src) => (
         <section className="card" key={src}>
           <div className="card-title">
             <span className={`badge ${src}`}>{SOURCE_LABEL[src]}</span>
-            {src === 'tanda' ? '탄다 시프트' : '메시지로 받은 시프트'}
+            {src === 'tanda' ? 'Tanda shifts' : 'Shifts from messages'}
           </div>
           <textarea
             rows={6}
@@ -112,13 +112,13 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
           />
           <div className="inline between">
             <label className="ghost-btn file">
-              <ImageIcon /> 스크린샷에서 읽기
+              <ImageIcon /> Read from screenshot
               <input type="file" accept="image/*" multiple hidden onChange={(e) => runOcr(src, e.target.files)} />
             </label>
-            {ocr?.source === src && <span className="small muted">이미지 읽는 중… {Math.round(ocr.progress * 100)}%</span>}
+            {ocr?.source === src && <span className="small muted">Reading image… {Math.round(ocr.progress * 100)}%</span>}
             {texts[src] && !ocr && (
               <button className="link" onClick={() => setTexts((t) => ({ ...t, [src]: '' }))}>
-                지우기
+                Clear
               </button>
             )}
           </div>
@@ -127,22 +127,26 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
 
       <label className="check pad small">
         <input type="checkbox" checked={withKorean} onChange={(e) => setWithKorean(e.target.checked)} />
-        스크린샷에 한국어가 있어요 (인식 데이터 추가 다운로드)
+        Screenshots contain Korean text (downloads extra OCR data)
       </label>
       {error && <p className="error pad">{error}</p>}
 
       <button className="primary block" disabled={!texts.tanda.trim() && !texts.message.trim()} onClick={analyze}>
-        시프트 분석하기
+        Find shifts
       </button>
 
       {rows && (
         <section className="card">
-          <div className="card-title">찾은 시프트 {rows.length}개</div>
-          {rows.length === 0 && <p className="small muted">시간 범위(예: 9am-3pm, 10:00~16:00)를 찾지 못했어요. 형식을 확인해 주세요.</p>}
+          <div className="card-title">
+            Found {rows.length} shift{rows.length === 1 ? '' : 's'}
+          </div>
+          {rows.length === 0 && (
+            <p className="small muted">No time ranges found (e.g. 9am-3pm, 10:00-16:00). Please check the format.</p>
+          )}
           <ul className="preview">
             {rows.map((r) => (
               <li key={r.key} className={r.include ? '' : 'off'}>
-                <input type="checkbox" checked={r.include} onChange={(e) => updateRow(r.key, { include: e.target.checked })} aria-label="포함" />
+                <input type="checkbox" checked={r.include} onChange={(e) => updateRow(r.key, { include: e.target.checked })} aria-label="Include" />
                 <span className={`badge ${r.source}`}>{SOURCE_LABEL[r.source]}</span>
                 <input
                   type="date"
@@ -150,18 +154,20 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
                   className={r.dateGuessed ? 'warn' : ''}
                   onChange={(e) => e.target.value && updateRow(r.key, { date: e.target.value, dateGuessed: false })}
                 />
-                <span className="dow">{WEEKDAY_KO[dayOfWeek(r.date)]}</span>
+                <span className="dow">{WEEKDAY_SHORT[dayOfWeek(r.date)]}</span>
                 <TimeInput value={r.start} onChange={(v) => updateRow(r.key, { start: v, end: normalizeRange(v, r.end % 1440)[1] })} />
                 <span>–</span>
                 <TimeInput value={r.end} onChange={(v) => updateRow(r.key, { end: normalizeRange(r.start, v)[1] })} />
-                {r.unpaidBreak !== undefined && <span className="small muted">휴식 {r.unpaidBreak}분</span>}
+                {r.unpaidBreak !== undefined && <span className="small muted">Break {r.unpaidBreak}m</span>}
                 <span className="raw" title={r.raw}>
                   {r.raw}
                 </span>
               </li>
             ))}
           </ul>
-          {rows.some((r) => r.dateGuessed) && <p className="small warn-text">노란색 날짜는 텍스트에서 못 찾아 추측한 거예요. 확인해 주세요.</p>}
+          {rows.some((r) => r.dateGuessed) && (
+            <p className="small warn-text">Dates highlighted in yellow weren't in the text and were guessed. Please check them.</p>
+          )}
 
           {merged && merged.events.length > 0 && (
             <>
@@ -180,7 +186,7 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
                   .filter((e) => e.action === 'replaced' || e.action === 'kept')
                   .map((e, i) => (
                     <li key={i}>
-                      {fmtDateShort(e.shift.date)} · 적용 {fmtTime(e.shift.start)}–{fmtTime(e.shift.end)} ({SOURCE_LABEL[e.shift.source]}) / 보관{' '}
+                      {fmtDateShort(e.shift.date)} · using {fmtTime(e.shift.start)}–{fmtTime(e.shift.end)} ({SOURCE_LABEL[e.shift.source]}) / kept{' '}
                       {e.shift.alt && `${fmtTime(e.shift.alt.start)}–${fmtTime(e.shift.alt.end)} (${SOURCE_LABEL[e.shift.alt.source]})`}
                     </li>
                   ))}
@@ -193,7 +199,7 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
                   setTexts({ tanda: '', message: '' });
                 }}
               >
-                합쳐서 저장하기
+                Merge and save
               </button>
             </>
           )}

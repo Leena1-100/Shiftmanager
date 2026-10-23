@@ -1,6 +1,6 @@
 {
-  "name": "시프트머니 - 시프트 & 급여 관리",
-  "short_name": "시프트머니",
+  "name": "ShiftMoney - Shifts & Pay Tracker",
+  "short_name": "ShiftMoney",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

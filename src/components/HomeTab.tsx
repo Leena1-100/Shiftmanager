@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Band, Settings, Shift, Source, Workplace } from '../types';
-import { calcShift, summarize, workplaceFor } from '../lib/pay';
+import { calcShift, isUntaxed, summarize, taxableGross, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { taxFreeRoom, weeklyWithholding, WEEKLY_TAX_FREE } from '../lib/tax';
 import { bandLabel } from '../lib/defaults';
@@ -25,11 +25,12 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
   const planned = summarize(shifts, workplaces, 'planned');
   const effective = summarize(shifts, workplaces, 'effective');
   const sum = mode === 'planned' ? planned : effective;
-  const tax = weeklyWithholding(sum.gross, settings.taxMode);
+  const taxable = taxableGross(sum);
+  const tax = weeklyWithholding(taxable, settings.taxMode);
   const net = sum.gross - tax;
-  const room = taxFreeRoom(sum.gross, settings.taxMode);
+  const room = taxFreeRoom(taxable, settings.taxMode);
   const diff = effective.gross - planned.gross;
-  const superAmt = sum.gross * settings.superRate;
+  const superAmt = taxable * settings.superRate;
   // Estimate "hours until tax" at the rate of the workplace worked most this week
   const mainWp =
     workplaces.find((w) => w.id === Object.entries(sum.byWorkplace).sort((a, b) => b[1].workedMinutes - a[1].workedMinutes)[0]?.[0]) ??
@@ -59,6 +60,11 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
             <b>{fmtMoney(net)}</b>
           </div>
         </div>
+        {sum.untaxedGross > 0 && (
+          <div className="hero-note">
+            Includes {fmtMoney(sum.untaxedGross)} from message rosters, counted with no tax or super taken off
+          </div>
+        )}
         {mode === 'effective' && effective.actualCount > 0 && diff !== 0 && (
           <div className="hero-note">
             {diff > 0 ? '+' : ''}
@@ -81,7 +87,7 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
             Tax-free zone <span className="muted">up to {fmtMoney(WEEKLY_TAX_FREE)}/week</span>
           </div>
           <div className="meter" aria-hidden="true">
-            <div style={{ width: `${Math.min(100, (sum.gross / WEEKLY_TAX_FREE) * 100)}%` }} />
+            <div style={{ width: `${Math.min(100, (taxable / WEEKLY_TAX_FREE) * 100)}%` }} />
           </div>
           {room > 0 ? (
             <p className="small">
@@ -90,7 +96,7 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
             </p>
           ) : (
             <p className="small">
-              You're {fmtMoney(sum.gross - WEEKLY_TAX_FREE)} over the tax-free zone. Tax applies to the amount above it.
+              You're {fmtMoney(taxable - WEEKLY_TAX_FREE)} over the tax-free zone. Tax applies to the amount above it.
             </p>
           )}
         </section>
@@ -270,6 +276,7 @@ function ShiftCard({
         <b>{fmtMoney(eff.pay)}</b>
         <span className="muted small">{fmtDuration(eff.workedMinutes)}</span>
         {eff.fromTanda && <span className="badge tanda">Tanda pay</span>}
+        {isUntaxed(shift) && <span className="untaxed">No tax · no super</span>}
       </div>
     </article>
   );

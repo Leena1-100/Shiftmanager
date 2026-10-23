@@ -127,6 +127,8 @@ export interface PaySummary {
   gross: number;
   minutesByBand: Partial<Record<Band, number>>;
   actualCount: number;
+  /** Pay from shifts that came only from a pasted message roster: no tax or super is taken from it */
+  untaxedGross: number;
 }
 
 export interface WeekSummary extends PaySummary {
@@ -142,7 +144,18 @@ const emptySummary = (): PaySummary => ({
   gross: 0,
   minutesByBand: {},
   actualCount: 0,
+  untaxedGross: 0,
 });
+
+/** Shifts known only from a pasted message (never confirmed by Tanda) are counted without tax or super */
+export function isUntaxed(shift: Shift): boolean {
+  return shift.sources.length > 0 && shift.sources.every((s) => s === 'message');
+}
+
+/** The part of a summary that tax and super are worked out on */
+export function taxableGross(s: PaySummary): number {
+  return round2(s.gross - s.untaxedGross);
+}
 
 /** The workplace a shift is paid under (falls back to the first workplace for unassigned shifts) */
 export function workplaceFor(shift: Shift, workplaces: Workplace[]): Workplace | undefined {
@@ -162,13 +175,16 @@ export function summarize(shifts: Shift[], workplaces: Workplace[], mode: 'plann
       s.unpaidBreak += c.unpaidBreak;
       s.paidBreak += c.paidBreak;
       s.gross += c.pay;
+      if (isUntaxed(sh)) s.untaxedGross += c.pay;
       if (c.usedActual) s.actualCount++;
       for (const [b, m] of Object.entries(c.minutesByBand) as [Band, number][]) {
         s.minutesByBand[b] = (s.minutesByBand[b] ?? 0) + m;
       }
     }
   }
-  total.gross = round2(total.gross);
-  for (const part of Object.values(total.byWorkplace)) part.gross = round2(part.gross);
+  for (const s of [total, ...Object.values(total.byWorkplace)]) {
+    s.gross = round2(s.gross);
+    s.untaxedGross = round2(s.untaxedGross);
+  }
   return total;
 }

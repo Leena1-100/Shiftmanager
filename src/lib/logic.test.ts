@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseShifts } from './parser';
-import { calcShift, breaksFor, summarize } from './pay';
+import { calcShift, breaksFor, summarize, taxableGross } from './pay';
 import { mergeShifts, swapAlt } from './merge';
 import { weeklyWithholding, annualTax } from './tax';
 import { DEFAULT_BREAK_TIERS, applyAward, awardMinimumRate, newWorkplace } from './defaults';
@@ -302,5 +302,18 @@ Thanks, see you then!`;
       { date: '2026-10-29', start: hm(7, 20), end: hm(16), unpaidBreak: 30 },
       { date: '2026-10-31', start: hm(9), end: hm(17, 30), unpaidBreak: undefined },
     ]);
+  });
+});
+
+describe('message rosters are not taxed', () => {
+  it('pay from message-only shifts is kept out of the taxable amount', () => {
+    const wp = { ...newWorkplace(0), id: 'w', baseRate: 30 };
+    const base = { date: '2026-10-27', start: hm(9), end: hm(15), workplaceId: 'w' };
+    const fromMessage: Shift = { ...base, id: 'a', source: 'message', sources: ['message'] };
+    const fromTanda: Shift = { ...base, id: 'b', date: '2026-10-28', source: 'tanda', sources: ['tanda', 'message'] };
+    const s = summarize([fromMessage, fromTanda], [wp], 'effective');
+    expect(s.gross).toBe(330);
+    expect(s.untaxedGross).toBe(165);
+    expect(taxableGross(s)).toBe(165);
   });
 });

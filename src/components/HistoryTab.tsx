@@ -1,5 +1,5 @@
 import type { AppState, WeekMeta } from '../types';
-import { summarize } from '../lib/pay';
+import { summarize, taxableGross } from '../lib/pay';
 import { TAX_FREE_THRESHOLD, weeklyWithholding } from '../lib/tax';
 import { addDays, fmtDateShort, fmtDuration, fmtMoney, todayISO, weekStartOf } from '../lib/time';
 import { CheckIcon } from './Icons';
@@ -31,7 +31,7 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenWeek }: Props) {
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([start, list]) => {
       const sum = summarize(list, state.workplaces, 'effective');
-      const tax = weeklyWithholding(sum.gross, settings.taxMode);
+      const tax = weeklyWithholding(taxableGross(sum), settings.taxMode);
       return { start, sum, tax, net: sum.gross - tax, meta: metas[start] ?? {} };
     });
 

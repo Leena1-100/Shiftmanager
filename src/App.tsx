@@ -2,22 +2,26 @@ import { useMemo, useState } from 'react';
 import type { Settings, Shift, WeekMeta, Workplace } from './types';
 import { usePersistentState } from './lib/storage';
 import { addDays, fmtDateShort, todayISO, weekStartOf } from './lib/time';
-import { HomeIcon, ImportIcon, WalletIcon, GearIcon, ChevronLeft, ChevronRight } from './components/Icons';
+import { HomeIcon, CalendarIcon, WalletIcon, GearIcon, ChevronLeft, ChevronRight, CloseIcon } from './components/Icons';
 import HomeTab from './components/HomeTab';
 import ImportTab from './components/ImportTab';
+import CalendarTab from './components/CalendarTab';
 import HistoryTab from './components/HistoryTab';
 import SettingsTab from './components/SettingsTab';
 import ShiftEditor from './components/ShiftEditor';
 import Onboarding from './components/Onboarding';
 
-type Tab = 'home' | 'import' | 'history' | 'settings';
+type Tab = 'home' | 'calendar' | 'history' | 'settings';
 
 export default function App() {
   const [state, setState] = usePersistentState();
   const { settings } = state;
   const [tab, setTab] = useState<Tab>('home');
   const [weekStart, setWeekStart] = useState(() => weekStartOf(todayISO(), settings.weekStartDay));
-  const [editing, setEditing] = useState<Shift | 'new' | null>(null);
+  // Shift being edited, or a new shift on `date`
+  const [editing, setEditing] = useState<{ shift: Shift | null; date: string } | null>(null);
+  // Week whose roster is being imported (opens the import sheet)
+  const [importWeek, setImportWeek] = useState<string | null>(null);
   // Bumped after restoring/resetting so the settings inputs re-render with the new values
   const [resetKey, setResetKey] = useState(0);
 
@@ -70,7 +74,7 @@ export default function App() {
     );
   }
 
-  const showWeekNav = tab === 'home' || tab === 'import';
+  const showWeekNav = tab === 'home';
   const isThisWeek = weekStart === weekStartOf(todayISO(), settings.weekStartDay);
 
   return (
@@ -106,22 +110,18 @@ export default function App() {
             workplaces={state.workplaces}
             shifts={weekShifts}
             weekStart={weekStart}
-            onEdit={(s) => setEditing(s)}
-            onAdd={() => setEditing('new')}
+            onEdit={(s) => setEditing({ shift: s, date: s.date })}
+            onAdd={() => setEditing({ shift: null, date: weekStart })}
             onSave={saveShift}
-            onGoImport={() => setTab('import')}
+            onGoImport={() => setImportWeek(weekStart)}
           />
         )}
-        {tab === 'import' && (
-          <ImportTab
-            settings={settings}
-            workplaces={state.workplaces}
-            allShifts={state.shifts}
-            weekStart={weekStart}
-            onApply={(shifts) => {
-              setShifts(shifts);
-              setTab('home');
-            }}
+        {tab === 'calendar' && (
+          <CalendarTab
+            state={state}
+            onEdit={(s) => setEditing({ shift: s, date: s.date })}
+            onAdd={(date) => setEditing({ shift: null, date })}
+            onImportWeek={setImportWeek}
           />
         )}
         {tab === 'history' && (
@@ -153,7 +153,7 @@ export default function App() {
         {(
           [
             ['home', 'This week', <HomeIcon key="h" />],
-            ['import', 'Import', <ImportIcon key="i" />],
+            ['calendar', 'Calendar', <CalendarIcon key="c" />],
             ['history', 'Earnings', <WalletIcon key="w" />],
             ['settings', 'Settings', <GearIcon key="g" />],
           ] as const
@@ -165,10 +165,37 @@ export default function App() {
         ))}
       </nav>
 
+      {importWeek && (
+        <div className="sheet-backdrop" onClick={() => setImportWeek(null)}>
+          <div className="sheet tall" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="sheet-grip" />
+            <div className="sheet-head">
+              <h3>
+                Roster for {fmtDateShort(importWeek)} – {fmtDateShort(addDays(importWeek, 6))}
+              </h3>
+              <button className="icon-btn" aria-label="Close" onClick={() => setImportWeek(null)}>
+                <CloseIcon />
+              </button>
+            </div>
+            <ImportTab
+              settings={settings}
+              workplaces={state.workplaces}
+              allShifts={state.shifts}
+              weekStart={importWeek}
+              onApply={(shifts) => {
+                setShifts(shifts);
+                setImportWeek(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {editing && (
         <ShiftEditor
-          shift={editing === 'new' ? null : editing}
-          defaultDate={weekStart}
+          key={editing.shift?.id ?? `new-${editing.date}`}
+          shift={editing.shift}
+          defaultDate={editing.date}
           workplaces={state.workplaces}
           onClose={() => setEditing(null)}
           onSave={(s) => {

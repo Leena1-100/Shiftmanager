@@ -5,6 +5,7 @@ A shift and weekly pay tracker for part-time/casual fast food workers in Austral
 ## Features
 
 - **Workplace setup** — on first launch, set up each workplace with its award (Fast Food Industry Award, General Retail Industry Award, or any other award / enterprise agreement), classification level, employment type and hourly rate. Penalty rates, evening/overnight time bands and break rules come from the award and can be edited. Work more than one job? Add each workplace and every shift is paid at its own workplace's rates.
+- **Calendar** — a month view with the money earned on each day (solid = worked, dashed = rostered estimate). Each week row has an *Add roster* button that opens the import for that Monday-to-Sunday week.
 - **Import shifts** — paste your Tanda shifts and your manager's messages (or upload screenshots, read in-browser with OCR). Dates, times and breaks are detected and **merged into one roster**.
   - Identical shifts are de-duplicated. When times differ, the preferred source (Settings: Message/Tanda) wins and the other version is kept so you can swap it in from the shift card.
   - Understands e.g. `Monday 27 Oct 9:00am - 3:00pm`, `Mon 9-3`, `Thu 5-11pm`, `27/10 10:00-16:00`, `Break 30m`, and Korean-language messages.

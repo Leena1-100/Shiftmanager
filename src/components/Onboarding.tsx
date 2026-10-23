@@ -5,22 +5,25 @@ import { TAX_MODE_LABEL } from '../lib/tax';
 import { WEEKDAY_SHORT, fmtMoney } from '../lib/time';
 import WorkplaceForm, { workplaceIsValid } from './WorkplaceForm';
 import { PlusIcon } from './Icons';
+import CloudSave from './CloudSave';
+import type { CloudSync } from '../lib/useCloudSync';
 
 interface Props {
   settings: Settings;
+  cloud: CloudSync;
   onFinish: (workplaces: Workplace[], settings: Partial<Settings>) => void;
 }
 
-type Step = 'welcome' | 'workplace' | 'list' | 'personal';
+type Step = 'welcome' | 'restore' | 'workplace' | 'list' | 'personal';
 
-export default function Onboarding({ settings, onFinish }: Props) {
+export default function Onboarding({ settings, cloud, onFinish }: Props) {
   const [step, setStep] = useState<Step>('welcome');
   const [workplaces, setWorkplaces] = useState<Workplace[]>([]);
   const [draft, setDraft] = useState<Workplace>(() => newWorkplace(0));
   const [taxMode, setTaxMode] = useState<TaxMode>(settings.taxMode);
   const [weekStartDay, setWeekStartDay] = useState(settings.weekStartDay);
 
-  const stepIndex = { welcome: 0, workplace: 1, list: 1, personal: 2 }[step];
+  const stepIndex = { welcome: 0, restore: 0, workplace: 1, list: 1, personal: 2 }[step];
 
   const saveDraft = () => {
     setWorkplaces((ws) => (ws.some((w) => w.id === draft.id) ? ws.map((w) => (w.id === draft.id ? draft : w)) : [...ws, draft]));
@@ -29,7 +32,7 @@ export default function Onboarding({ settings, onFinish }: Props) {
 
   return (
     <div className="onboarding">
-      {step !== 'welcome' && (
+      {step !== 'welcome' && step !== 'restore' && (
         <div className="progress" aria-label={`Step ${stepIndex} of 2`}>
           {[1, 2].map((i) => (
             <span key={i} className={i <= stepIndex ? 'on' : ''} />
@@ -51,6 +54,23 @@ export default function Onboarding({ settings, onFinish }: Props) {
           </ul>
           <button className="primary block" onClick={() => setStep('workplace')}>
             Set up my workplace
+          </button>
+          <button className="secondary block" onClick={() => setStep('restore')}>
+            Restore from cloud save
+          </button>
+        </div>
+      )}
+
+      {step === 'restore' && (
+        <div className="stack">
+          <div>
+            <h2 className="ob-title">Restore from cloud save</h2>
+          </div>
+          <section className="card">
+            <CloudSave cloud={cloud} mode="restore" />
+          </section>
+          <button className="secondary" onClick={() => setStep('welcome')}>
+            Back
           </button>
         </div>
       )}

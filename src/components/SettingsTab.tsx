@@ -9,6 +9,8 @@ import { WorkplaceCard } from './Onboarding';
 import WorkplaceForm, { workplaceIsValid } from './WorkplaceForm';
 import { PlusIcon } from './Icons';
 import ConfirmButton from './ConfirmButton';
+import CloudSave from './CloudSave';
+import type { CloudSync } from '../lib/useCloudSync';
 
 interface Props {
   state: AppState;
@@ -16,6 +18,7 @@ interface Props {
   onSaveWorkplace: (wp: Workplace) => void;
   onDeleteWorkplace: (id: string) => void;
   onReplaceState: (s: AppState) => void;
+  cloud: CloudSync;
 }
 
 const numOr = (v: string, fallback: number) => {
@@ -23,7 +26,7 @@ const numOr = (v: string, fallback: number) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
-export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDeleteWorkplace, onReplaceState }: Props) {
+export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDeleteWorkplace, onReplaceState, cloud }: Props) {
   const { settings } = state;
   const [editing, setEditing] = useState<Workplace | null>(null);
   const isExisting = !!editing && state.workplaces.some((w) => w.id === editing.id);
@@ -64,6 +67,11 @@ export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDelete
         <button className="ghost-btn center" onClick={() => setEditing(newWorkplace(state.workplaces.length))}>
           <PlusIcon size={16} /> Add workplace
         </button>
+      </section>
+
+      <section className="card">
+        <div className="card-title">Cloud save</div>
+        <CloudSave cloud={cloud} />
       </section>
 
       <section className="card">
@@ -125,10 +133,15 @@ export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDelete
           <ConfirmButton
             className="link danger-text"
             label="Reset everything"
-            confirmLabel="Tap again to delete all data"
-            onConfirm={() => onReplaceState(emptyState())}
+            confirmLabel={cloud.config ? 'Tap again to clear this phone' : 'Tap again to delete all data'}
+            onConfirm={() => {
+              // Disconnect first so the empty app is never uploaded over the cloud save
+              cloud.disconnect();
+              onReplaceState(emptyState());
+            }}
           />
         </div>
+        {cloud.config && <p className="small muted">Reset clears this phone only. Your cloud save stays on GitHub.</p>}
         {backupError && <p className="error">{backupError}</p>}
         {pendingRestore && (
           <div className="confirm-box">

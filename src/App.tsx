@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Settings, Shift, WeekMeta, Workplace } from './types';
 import { usePersistentState } from './lib/storage';
+import { useCloudSync } from './lib/useCloudSync';
 import { addDays, fmtDateShort, todayISO, weekStartOf } from './lib/time';
 import { HomeIcon, CalendarIcon, WalletIcon, GearIcon, ChevronLeft, ChevronRight, CloseIcon } from './components/Icons';
 import HomeTab from './components/HomeTab';
@@ -24,6 +25,11 @@ export default function App() {
   const [importWeek, setImportWeek] = useState<string | null>(null);
   // Bumped after restoring/resetting so the settings inputs re-render with the new values
   const [resetKey, setResetKey] = useState(0);
+  const replaceState = (next: typeof state) => {
+    setState(next);
+    setResetKey((k) => k + 1);
+  };
+  const cloud = useCloudSync(state, replaceState);
 
   const weekEnd = addDays(weekStart, 6);
   const weekShifts = useMemo(
@@ -64,6 +70,7 @@ export default function App() {
       <div className="app">
         <Onboarding
           settings={settings}
+          cloud={cloud}
           onFinish={(workplaces, patch) => {
             setState((st) => ({ ...st, onboarded: true, workplaces, settings: { ...st.settings, ...patch } }));
             if (patch.weekStartDay !== undefined) setWeekStart(weekStartOf(todayISO(), patch.weekStartDay));
@@ -141,10 +148,8 @@ export default function App() {
             onUpdate={updateSettings}
             onSaveWorkplace={saveWorkplace}
             onDeleteWorkplace={deleteWorkplace}
-            onReplaceState={(next) => {
-              setState(next);
-              setResetKey((k) => k + 1);
-            }}
+            onReplaceState={replaceState}
+            cloud={cloud}
           />
         )}
       </main>

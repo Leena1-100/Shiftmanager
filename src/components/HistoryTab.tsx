@@ -30,7 +30,7 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenWeek }: Props) {
   const weeks = [...groups.entries()]
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([start, list]) => {
-      const sum = summarize(list, settings, 'effective');
+      const sum = summarize(list, state.workplaces, 'effective');
       const tax = weeklyWithholding(sum.gross, settings.taxMode);
       return { start, sum, tax, net: sum.gross - tax, meta: metas[start] ?? {} };
     });
@@ -42,7 +42,7 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenWeek }: Props) {
   const monthKey = today.slice(0, 7);
   const monthName = MONTH_LONG[Number(monthKey.slice(5)) - 1];
   const monthShifts = shifts.filter((s) => s.date.startsWith(monthKey));
-  const month = summarize(monthShifts, settings, 'effective');
+  const month = summarize(monthShifts, state.workplaces, 'effective');
   const received = weeks.filter((w) => w.meta.received).reduce((a, w) => a + (w.meta.receivedAmount ?? w.net), 0);
 
   const recent = weeks.slice(0, 8).reverse();
@@ -86,6 +86,26 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenWeek }: Props) {
           <b>{fmtDuration(month.workedMinutes)}</b>
         </div>
       </section>
+
+      {state.workplaces.length > 1 && month.gross > 0 && (
+        <section className="card">
+          <div className="card-title">{monthName} by workplace</div>
+          <ul className="breakdown">
+            {state.workplaces
+              .filter((w) => month.byWorkplace[w.id])
+              .map((w) => (
+                <li key={w.id}>
+                  <span className="inline">
+                    <span className="wp-dot" style={{ background: w.color }} />
+                    {w.name}
+                  </span>
+                  <span>{fmtDuration(month.byWorkplace[w.id].workedMinutes)}</span>
+                  <b>{fmtMoney(month.byWorkplace[w.id].gross)}</b>
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
 
       {recent.length > 0 && (
         <section className="card">

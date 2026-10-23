@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Settings, Shift, WeekMeta } from './types';
+import type { Settings, Shift, WeekMeta, Workplace } from './types';
 import { usePersistentState } from './lib/storage';
 import { addDays, fmtDateShort, todayISO, weekStartOf } from './lib/time';
 import { HomeIcon, ImportIcon, WalletIcon, GearIcon, ChevronLeft, ChevronRight } from './components/Icons';
@@ -8,6 +8,7 @@ import ImportTab from './components/ImportTab';
 import HistoryTab from './components/HistoryTab';
 import SettingsTab from './components/SettingsTab';
 import ShiftEditor from './components/ShiftEditor';
+import Onboarding from './components/Onboarding';
 
 type Tab = 'home' | 'import' | 'history' | 'settings';
 
@@ -42,6 +43,32 @@ export default function App() {
   };
   const updateWeek = (key: string, meta: WeekMeta) =>
     setState((st) => ({ ...st, weeks: { ...st.weeks, [key]: { ...st.weeks[key], ...meta } } }));
+  const saveWorkplace = (wp: Workplace) =>
+    setState((st) => {
+      const exists = st.workplaces.some((w) => w.id === wp.id);
+      return { ...st, workplaces: exists ? st.workplaces.map((w) => (w.id === wp.id ? wp : w)) : [...st.workplaces, wp] };
+    });
+  const deleteWorkplace = (id: string) =>
+    setState((st) => ({
+      ...st,
+      workplaces: st.workplaces.filter((w) => w.id !== id),
+      shifts: st.shifts.filter((s) => s.workplaceId !== id),
+    }));
+
+  if (!state.onboarded || state.workplaces.length === 0) {
+    return (
+      <div className="app">
+        <Onboarding
+          settings={settings}
+          onFinish={(workplaces, patch) => {
+            setState((st) => ({ ...st, onboarded: true, workplaces, settings: { ...st.settings, ...patch } }));
+            if (patch.weekStartDay !== undefined) setWeekStart(weekStartOf(todayISO(), patch.weekStartDay));
+            setTab('home');
+          }}
+        />
+      </div>
+    );
+  }
 
   const showWeekNav = tab === 'home' || tab === 'import';
   const isThisWeek = weekStart === weekStartOf(todayISO(), settings.weekStartDay);
@@ -76,6 +103,7 @@ export default function App() {
         {tab === 'home' && (
           <HomeTab
             settings={settings}
+            workplaces={state.workplaces}
             shifts={weekShifts}
             weekStart={weekStart}
             onEdit={(s) => setEditing(s)}
@@ -87,6 +115,7 @@ export default function App() {
         {tab === 'import' && (
           <ImportTab
             settings={settings}
+            workplaces={state.workplaces}
             allShifts={state.shifts}
             weekStart={weekStart}
             onApply={(shifts) => {
@@ -110,6 +139,8 @@ export default function App() {
             key={resetKey}
             state={state}
             onUpdate={updateSettings}
+            onSaveWorkplace={saveWorkplace}
+            onDeleteWorkplace={deleteWorkplace}
             onReplaceState={(next) => {
               setState(next);
               setResetKey((k) => k + 1);
@@ -138,7 +169,7 @@ export default function App() {
         <ShiftEditor
           shift={editing === 'new' ? null : editing}
           defaultDate={weekStart}
-          settings={settings}
+          workplaces={state.workplaces}
           onClose={() => setEditing(null)}
           onSave={(s) => {
             saveShift(s);

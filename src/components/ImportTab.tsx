@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import type { Settings, Shift, Source } from '../types';
+import type { Settings, Shift, Source, Workplace } from '../types';
 import { parseShifts, type ParsedShift } from '../lib/parser';
 import { mergeShifts, type MergeAction } from '../lib/merge';
 import { imageToText } from '../lib/ocr';
@@ -9,6 +9,7 @@ import { SOURCE_LABEL } from './HomeTab';
 
 interface Props {
   settings: Settings;
+  workplaces: Workplace[];
   allShifts: Shift[];
   weekStart: string;
   onApply: (shifts: Shift[]) => void;
@@ -40,7 +41,8 @@ const ACTION_LABEL: Record<MergeAction, string> = {
   kept: 'Different times → existing kept',
 };
 
-export default function ImportTab({ settings, allShifts, weekStart, onApply }: Props) {
+export default function ImportTab({ settings, workplaces, allShifts, weekStart, onApply }: Props) {
+  const [workplaceId, setWorkplaceId] = useState(workplaces[0].id);
   const [texts, setTexts] = useState({ tanda: '', message: '' });
   const [rows, setRows] = useState<Row[] | null>(null);
   const [ocr, setOcr] = useState<{ source: Source; progress: number } | null>(null);
@@ -79,9 +81,9 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
     const incoming = rows
       .filter((r) => r.include)
       .sort((a, b) => (a.source === b.source ? 0 : a.source === 'tanda' ? -1 : 1))
-      .map(({ date, start, end, unpaidBreak, source }) => ({ date, start, end, unpaidBreak, source }));
+      .map(({ date, start, end, unpaidBreak, source }) => ({ date, start, end, unpaidBreak, source, workplaceId }));
     return mergeShifts(allShifts, incoming, settings.mergePriority);
-  }, [rows, allShifts, settings.mergePriority]);
+  }, [rows, allShifts, settings.mergePriority, workplaceId]);
 
   const counts = merged?.events.reduce<Partial<Record<MergeAction, number>>>((acc, e) => {
     acc[e.action] = (acc[e.action] ?? 0) + 1;
@@ -97,6 +99,19 @@ export default function ImportTab({ settings, allShifts, weekStart, onApply }: P
         Add your Tanda shifts and message shifts and they'll be merged into one roster. When the same day has different times,{' '}
         <b>{SOURCE_LABEL[settings.mergePriority]}</b> wins, and you can switch to the other version from the shift card any time.
       </p>
+
+      {workplaces.length > 1 && (
+        <section className="card">
+          <div className="card-title">Which workplace are these shifts for?</div>
+          <div className="seg small">
+            {workplaces.map((w) => (
+              <button key={w.id} className={w.id === workplaceId ? 'on' : ''} onClick={() => setWorkplaceId(w.id)}>
+                {w.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {(['tanda', 'message'] as const).map((src) => (
         <section className="card" key={src}>

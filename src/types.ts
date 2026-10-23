@@ -30,6 +30,8 @@ export interface Shift {
   sources: Source[];
   /** Unpaid break (minutes) written on the roster. When absent, the break rules decide. */
   unpaidBreak?: number;
+  /** Workplace this shift belongs to */
+  workplaceId?: string;
   publicHoliday?: boolean;
   note?: string;
   actual?: ActualWork;
@@ -50,14 +52,32 @@ export interface BreakTier {
 
 export type TaxMode = 'resident-tft' | 'resident-no-tft' | 'whm' | 'non-resident';
 
-export type Employment = 'parttime' | 'casual';
+export type Employment = 'parttime' | 'casual' | 'fulltime';
 
-export interface Settings {
-  baseRate: number;
+export type AwardId = 'fast-food' | 'general-retail' | 'custom';
+
+export interface Workplace {
+  id: string;
+  name: string;
+  color: string;
+  award: AwardId;
+  /** Free text for custom awards / enterprise agreements, e.g. "McDonald's EA 2026" */
+  awardName?: string;
+  level: string;
   employment: Employment;
+  /** Ordinary hourly rate before tax */
+  baseRate: number;
   multipliers: Multipliers;
+  /** Weekday evening band starts at this minute of the day and runs to midnight */
+  eveningStart: number;
+  /** Weekday night band runs from midnight to this minute of the day */
+  nightEnd: number;
   breakTiers: BreakTier[];
   minEngagementMinutes: number;
+}
+
+/** Personal settings shared by all workplaces */
+export interface Settings {
   taxMode: TaxMode;
   superRate: number;
   /** 0 = Sunday, 1 = Monday, ... */
@@ -72,7 +92,10 @@ export interface WeekMeta {
 }
 
 export interface AppState {
-  version: 1;
+  version: 2;
+  /** False until the first-run setup is finished */
+  onboarded: boolean;
+  workplaces: Workplace[];
   settings: Settings;
   shifts: Shift[];
   weeks: Record<string, WeekMeta>;

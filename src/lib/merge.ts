@@ -6,6 +6,7 @@ export interface IncomingShift {
   end: number;
   unpaidBreak?: number;
   source: Source;
+  workplaceId?: string;
   note?: string;
 }
 
@@ -26,13 +27,15 @@ function rank(source: Source, priority: Settings['mergePriority']): number {
   return source === priority ? 2 : 1;
 }
 
-function overlaps(a: { date: string; start: number; end: number }, b: { date: string; start: number; end: number }) {
-  return a.date === b.date && a.start < b.end && b.start < a.end;
+type Slot = { date: string; start: number; end: number; workplaceId?: string };
+
+function overlaps(a: Slot, b: Slot) {
+  return a.workplaceId === b.workplaceId && a.date === b.date && a.start < b.end && b.start < a.end;
 }
 
 /**
  * Merge imported shifts into the existing ones.
- * - No overlapping shift on the same day → add it
+ * - No overlapping shift at the same workplace on the same day → add it
  * - Same times → just record the extra source (duplicate)
  * - Different times → apply the higher-priority source and keep the other as `alt` (swappable any time)
  * - Recorded actual hours are always kept
@@ -56,6 +59,7 @@ export function mergeShifts(
         source: inc.source,
         sources: [inc.source],
         unpaidBreak: inc.unpaidBreak,
+        workplaceId: inc.workplaceId,
         note: inc.note,
       };
       shifts.push(s);

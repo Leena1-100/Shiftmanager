@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { parseShifts } from './parser';
-import { calcShift, breaksFor } from './pay';
+import { calcShift, breaksFor, summarize } from './pay';
 import { mergeShifts, swapAlt } from './merge';
 import { weeklyWithholding, annualTax } from './tax';
-import { DEFAULT_SETTINGS, DEFAULT_BREAK_TIERS } from './defaults';
+import { DEFAULT_BREAK_TIERS, applyAward, newWorkplace } from './defaults';
+import { reviveState } from './storage';
 import type { Shift } from '../types';
 
 const WEEK = '2026-10-26'; // Monday
@@ -68,7 +69,7 @@ describe('breaks & pay', () => {
   });
 
   const base: Shift = { id: 'x', date: '2026-10-27', start: hm(9), end: hm(15), source: 'tanda', sources: ['tanda'] };
-  const settings = { ...DEFAULT_SETTINGS, baseRate: 30 };
+  const settings = { ...newWorkplace(0, 'fast-food'), baseRate: 30 };
 
   it('6h weekday shift = 5.5h paid after 30m unpaid break', () => {
     const c = calcShift(base, settings);
@@ -137,3 +138,51 @@ describe('tax', () => {
 function round(n: number) {
   return Math.round(n * 100) / 100;
 }
+
+describe('workplaces', () => {
+  const ff = { ...newWorkplace(0, 'fast-food'), id: 'ff', baseRate: 30 };
+  const retail = { ...applyAward(newWorkplace(1), 'general-retail'), id: 'rt', baseRate: 30 };
+  const shift = (workplaceId: string): Shift => ({
+    id: workplaceId,
+    date: '2026-10-27',
+    start: hm(16),
+    end: hm(20),
+    source: 'manual',
+    sources: ['manual'],
+    workplaceId,
+  });
+
+  it('each workplace uses its own award time bands', () => {
+    // Tue 4pm–8pm: fast food = all weekday; retail = 2h after 6pm at 125%
+    expect(calcShift(shift('ff'), ff).minutesByBand).toEqual({ weekday: 240 });
+    expect(calcShift(shift('rt'), retail).minutesByBand).toEqual({ weekday: 120, evening: 120 });
+    expect(calcShift(shift('rt'), retail).pay).toBe(135);
+  });
+
+  it('summarize totals per workplace', () => {
+    const s = summarize([shift('ff'), shift('rt')], [ff, retail], 'effective');
+    expect(s.gross).toBe(255);
+    expect(s.byWorkplace.ff.gross).toBe(120);
+    expect(s.byWorkplace.rt.gross).toBe(135);
+  });
+
+  it('shifts only merge with shifts at the same workplace', () => {
+    const first = mergeShifts([], [{ date: '2026-10-27', start: hm(9), end: hm(15), source: 'tanda', workplaceId: 'ff' }], 'message');
+    const { events } = mergeShifts(first.shifts, [{ date: '2026-10-27', start: hm(9), end: hm(15), source: 'message', workplaceId: 'rt' }], 'message');
+    expect(events[0].action).toBe('added');
+  });
+
+  it('migrates version 1 data into a workplace', () => {
+    const st = reviveState({
+      version: 1,
+      settings: { baseRate: 27, employment: 'casual', taxMode: 'whm', weekStartDay: 1, mergePriority: 'tanda' },
+      shifts: [{ id: 'a', date: '2026-10-27', start: 540, end: 900, source: 'tanda', sources: ['tanda'] }],
+      weeks: {},
+    });
+    expect(st.onboarded).toBe(true);
+    expect(st.workplaces).toHaveLength(1);
+    expect(st.workplaces[0]).toMatchObject({ baseRate: 27, employment: 'casual' });
+    expect(st.shifts[0].workplaceId).toBe(st.workplaces[0].id);
+    expect(st.settings).toEqual({ taxMode: 'whm', superRate: 0.12, weekStartDay: 1, mergePriority: 'tanda' });
+  });
+});

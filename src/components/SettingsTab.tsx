@@ -1,13 +1,20 @@
-import type { AppState, Band, BreakTier, Employment, Settings, TaxMode } from '../types';
-import { BAND_LABEL, DEFAULT_BREAK_TIERS, DEFAULT_MULTIPLIERS } from '../lib/defaults';
+import { useState } from 'react';
+import type { AppState, Settings, TaxMode, Workplace } from '../types';
+import { newWorkplace } from '../lib/defaults';
 import { TAX_MODE_LABEL } from '../lib/tax';
 import { emptyState, reviveState } from '../lib/storage';
-import { WEEKDAY_SHORT, fmtDuration, todayISO } from '../lib/time';
+import { WEEKDAY_SHORT, todayISO } from '../lib/time';
 import { SOURCE_LABEL } from './HomeTab';
+import { WorkplaceCard } from './Onboarding';
+import WorkplaceForm, { workplaceIsValid } from './WorkplaceForm';
+import { PlusIcon } from './Icons';
+import ConfirmButton from './ConfirmButton';
 
 interface Props {
   state: AppState;
   onUpdate: (patch: Partial<Settings>) => void;
+  onSaveWorkplace: (wp: Workplace) => void;
+  onDeleteWorkplace: (id: string) => void;
   onReplaceState: (s: AppState) => void;
 }
 
@@ -16,11 +23,14 @@ const numOr = (v: string, fallback: number) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
-export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) {
+export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDeleteWorkplace, onReplaceState }: Props) {
   const { settings } = state;
+  const [editing, setEditing] = useState<Workplace | null>(null);
+  const isExisting = !!editing && state.workplaces.some((w) => w.id === editing.id);
 
-  const setTier = (i: number, patch: Partial<BreakTier>) =>
-    onUpdate({ breakTiers: settings.breakTiers.map((t, j) => (j === i ? { ...t, ...patch } : t)) });
+  const [pendingRestore, setPendingRestore] = useState<AppState | null>(null);
+  const [backupError, setBackupError] = useState('');
+  const shiftCount = (wp: Workplace) => state.shifts.filter((s) => s.workplaceId === wp.id).length;
 
   const exportData = () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -34,107 +44,26 @@ export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) 
   const importData = async (file: File | undefined) => {
     if (!file) return;
     try {
-      const next = reviveState(JSON.parse(await file.text()));
-      if (confirm(`Restore this backup with ${next.shifts.length} shifts? Your current data will be overwritten.`)) onReplaceState(next);
+      setBackupError('');
+      setPendingRestore(reviveState(JSON.parse(await file.text())));
     } catch {
-      alert("Couldn't read the backup file.");
+      setPendingRestore(null);
+      setBackupError("Couldn't read that file. Choose a ShiftMoney backup (.json).");
     }
   };
 
   return (
     <div className="stack">
       <section className="card">
-        <div className="card-title">Pay</div>
-        <label className="field">
-          <span>Base hourly rate (before tax, $/h)</span>
-          <input
-            inputMode="decimal"
-            defaultValue={settings.baseRate}
-            onChange={(e) => onUpdate({ baseRate: numOr(e.target.value, settings.baseRate) })}
-          />
-        </label>
-        <p className="small muted">Use the Ordinary hours rate from your payslip. If you're on a junior rate, enter that amount.</p>
-        <div className="field">
-          <span>Employment type</span>
-          <div className="seg small">
-            {(['parttime', 'casual'] as Employment[]).map((e) => (
-              <button
-                key={e}
-                className={settings.employment === e ? 'on' : ''}
-                onClick={() => onUpdate({ employment: e, multipliers: { ...DEFAULT_MULTIPLIERS[e] } })}
-              >
-                {e === 'parttime' ? 'Part-time' : 'Casual'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="field">
-          <span>Penalty rates (multiplier)</span>
-          <ul className="mult-list">
-            {(Object.keys(BAND_LABEL) as Band[]).map((b) => (
-              <li key={b}>
-                <span>{BAND_LABEL[b]}</span>
-                <input
-                  className="num"
-                  inputMode="decimal"
-                  value={settings.multipliers[b]}
-                  onChange={(e) =>
-                    onUpdate({ multipliers: { ...settings.multipliers, [b]: numOr(e.target.value, settings.multipliers[b]) } })
-                  }
-                />
-                <span className="muted small">{Math.round(settings.multipliers[b] * 100)}%</span>
-              </li>
-            ))}
-          </ul>
-          <p className="small muted">Defaults follow the Fast Food Industry Award 2010. If your store uses a different agreement, match your payslip.</p>
-        </div>
-        <label className="field">
-          <span>Minimum engagement (minutes, 0 = off)</span>
-          <input
-            inputMode="numeric"
-            value={settings.minEngagementMinutes}
-            onChange={(e) => onUpdate({ minEngagementMinutes: Math.max(0, Math.round(numOr(e.target.value, 0))) })}
-          />
-        </label>
-      </section>
-
-      <section className="card">
-        <div className="card-title">Break rules</div>
-        <p className="small muted">Paid and unpaid breaks are worked out from the shift length. Only unpaid breaks are deducted from pay.</p>
-        <ul className="tier-list">
-          {settings.breakTiers.map((t, i) => (
-            <li key={i}>
-              <label>
-                <input className="num" inputMode="numeric" value={t.minMinutes} onChange={(e) => setTier(i, { minMinutes: Math.round(numOr(e.target.value, t.minMinutes)) })} />
-                <span className="small muted">min ({fmtDuration(t.minMinutes)}) or longer</span>
-              </label>
-              <label>
-                Paid
-                <input className="num xs" inputMode="numeric" value={t.paidCount} onChange={(e) => setTier(i, { paidCount: Math.round(numOr(e.target.value, t.paidCount)) })} />
-                ×
-                <input className="num xs" inputMode="numeric" value={t.paidLength} onChange={(e) => setTier(i, { paidLength: Math.round(numOr(e.target.value, t.paidLength)) })} />m
-              </label>
-              <label>
-                Unpaid
-                <input className="num xs" inputMode="numeric" value={t.unpaidMinutes} onChange={(e) => setTier(i, { unpaidMinutes: Math.round(numOr(e.target.value, t.unpaidMinutes)) })} />m
-              </label>
-              <button className="link" onClick={() => onUpdate({ breakTiers: settings.breakTiers.filter((_, j) => j !== i) })}>
-                Remove
-              </button>
-            </li>
+        <div className="card-title">Workplaces</div>
+        <div className="stack-sm">
+          {state.workplaces.map((w) => (
+            <WorkplaceCard key={w.id} wp={w} onClick={() => setEditing(w)} />
           ))}
-        </ul>
-        <div className="inline">
-          <button
-            className="ghost-btn"
-            onClick={() => onUpdate({ breakTiers: [...settings.breakTiers, { minMinutes: 600, paidCount: 0, paidLength: 10, unpaidMinutes: 0 }] })}
-          >
-            Add tier
-          </button>
-          <button className="link" onClick={() => onUpdate({ breakTiers: DEFAULT_BREAK_TIERS.map((t) => ({ ...t })) })}>
-            Reset to defaults
-          </button>
         </div>
+        <button className="ghost-btn center" onClick={() => setEditing(newWorkplace(state.workplaces.length))}>
+          <PlusIcon size={16} /> Add workplace
+        </button>
       </section>
 
       <section className="card">
@@ -193,11 +122,72 @@ export default function SettingsTab({ state, onUpdate, onReplaceState }: Props) 
             Restore backup
             <input type="file" accept="application/json" hidden onChange={(e) => importData(e.target.files?.[0])} />
           </label>
-          <button className="link danger-text" onClick={() => confirm('Delete all shifts and settings?') && onReplaceState(emptyState())}>
-            Reset everything
-          </button>
+          <ConfirmButton
+            className="link danger-text"
+            label="Reset everything"
+            confirmLabel="Tap again to delete all data"
+            onConfirm={() => onReplaceState(emptyState())}
+          />
         </div>
+        {backupError && <p className="error">{backupError}</p>}
+        {pendingRestore && (
+          <div className="confirm-box">
+            <p className="small">
+              Restore this backup ({pendingRestore.workplaces.length} workplace{pendingRestore.workplaces.length === 1 ? '' : 's'},{' '}
+              {pendingRestore.shifts.length} shifts)? Your current data will be replaced.
+            </p>
+            <div className="inline">
+              <button className="secondary" onClick={() => setPendingRestore(null)}>
+                Cancel
+              </button>
+              <button
+                className="primary"
+                onClick={() => {
+                  onReplaceState(pendingRestore);
+                  setPendingRestore(null);
+                }}
+              >
+                Restore
+              </button>
+            </div>
+          </div>
+        )}
       </section>
+
+      {editing && (
+        <div className="sheet-backdrop" onClick={() => setEditing(null)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="sheet-grip" />
+            <h3>{isExisting ? 'Edit workplace' : 'Add workplace'}</h3>
+            <WorkplaceForm key={editing.id} value={editing} onChange={setEditing} />
+            <div className="sheet-actions">
+              {isExisting && state.workplaces.length > 1 && (
+                <ConfirmButton
+                  label="Delete"
+                  confirmLabel={shiftCount(editing) ? `Delete with ${shiftCount(editing)} shifts?` : 'Tap again to delete'}
+                  onConfirm={() => {
+                    onDeleteWorkplace(editing.id);
+                    setEditing(null);
+                  }}
+                />
+              )}
+              <button className="secondary" onClick={() => setEditing(null)}>
+                Cancel
+              </button>
+              <button
+                className="primary"
+                disabled={!workplaceIsValid(editing)}
+                onClick={() => {
+                  onSaveWorkplace(editing);
+                  setEditing(null);
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

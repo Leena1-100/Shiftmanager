@@ -87,3 +87,13 @@ export function normalizeRange(start: number, end: number): [number, number] {
   while (e <= start) e += 1440;
   return [start, e];
 }
+
+/** Minutes → "10pm", "6:30am", "12am" */
+export function fmtClock12(min: number): string {
+  const m = ((min % 1440) + 1440) % 1440;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  const suffix = h < 12 ? 'am' : 'pm';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return mm ? `${h12}:${pad(mm)}${suffix}` : `${h12}${suffix}`;
+}

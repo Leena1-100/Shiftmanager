@@ -1057,3 +1057,241 @@ input[type='radio'] {
     opacity: 0;
   }
 }
+
+/* ---------- Onboarding ---------- */
+.onboarding {
+  padding: calc(20px + env(safe-area-inset-top)) 16px 32px;
+}
+
+.progress {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.progress span {
+  flex: 1;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--line);
+}
+
+.progress span.on {
+  background: var(--mint);
+}
+
+.welcome {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+
+.welcome-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: linear-gradient(140deg, #22d1ad 0%, #14b79a 100%);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 28px rgba(20, 183, 154, 0.28);
+}
+
+.brand-dot.big {
+  width: 26px;
+  height: 26px;
+  background: #fff;
+  box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.3);
+}
+
+.welcome h1 {
+  margin: 8px 0 0;
+  font-size: 32px;
+  letter-spacing: -0.8px;
+}
+
+.welcome-list {
+  margin: 8px 0 18px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.welcome-list li {
+  position: relative;
+  padding-left: 26px;
+  line-height: 1.45;
+}
+
+.welcome-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--mint-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2312a98b' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 10px no-repeat;
+}
+
+.ob-title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  letter-spacing: -0.4px;
+}
+
+/* ---------- Workplaces ---------- */
+select {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  background: var(--mint-softer);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  outline: none;
+}
+
+select:focus {
+  border-color: var(--mint);
+}
+
+.swatches {
+  display: flex;
+  gap: 10px;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.swatch.on {
+  box-shadow: 0 0 0 2px var(--text);
+}
+
+.money-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  color: var(--text);
+}
+
+.money-input input {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+}
+
+.money-input span.muted {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+details.advanced {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+details.advanced summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--mint-strong);
+  margin-bottom: 12px;
+}
+
+.wp-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--mint-softer);
+  border: 1px solid var(--line);
+}
+
+.wp-dot {
+  flex: none;
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.wp-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wp-rate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sub);
+}
+
+.wp-tag .wp-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.wp-subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding-top: 4px;
+}
+
+.wp-subhead .right {
+  margin-left: auto;
+}
+
+.ghost-btn.center {
+  align-self: center;
+  justify-content: center;
+}
+
+.danger.armed {
+  background: var(--danger);
+  color: #fff;
+  border-radius: 14px;
+  padding-inline: 14px;
+}
+
+.link.danger-text.armed {
+  font-weight: 700;
+}
+
+.confirm-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--mint-softer);
+  border: 1px solid var(--line);
+}

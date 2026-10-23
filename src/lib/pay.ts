@@ -1,4 +1,4 @@
-import type { Band, BreakTier, Settings, Shift } from '../types';
+import type { Band, BreakTier, Shift, Workplace } from '../types';
 import { addDays, dayOfWeek } from './time';
 
 export interface BreakAllowance {
@@ -20,15 +20,20 @@ export function breaksFor(spanMinutes: number, tiers: BreakTier[]): BreakAllowan
 }
 
 /** Penalty band for a minute offset from 00:00 on the shift date */
-export function bandAt(date: string, minute: number, publicHoliday: boolean): Band {
+export function bandAt(
+  date: string,
+  minute: number,
+  publicHoliday: boolean,
+  bands: Pick<Workplace, 'eveningStart' | 'nightEnd'>,
+): Band {
   const dayOffset = Math.floor(minute / 1440);
   const m = minute - dayOffset * 1440;
   if (publicHoliday && dayOffset === 0) return 'publicHoliday';
   const dow = dayOfWeek(dayOffset === 0 ? date : addDays(date, dayOffset));
   if (dow === 6) return 'saturday';
   if (dow === 0) return 'sunday';
-  if (m >= 22 * 60) return 'evening';
-  if (m < 6 * 60) return 'night';
+  if (m >= bands.eveningStart) return 'evening';
+  if (m < bands.nightEnd) return 'night';
   return 'weekday';
 }
 
@@ -57,12 +62,12 @@ export function round2(n: number): number {
  * mode 'planned' = rostered times; 'effective' = actual times when recorded, otherwise rostered.
  * The unpaid break is assumed to sit in the middle of the shift; every other minute gets its band multiplier.
  */
-export function calcShift(shift: Shift, settings: Settings, mode: 'planned' | 'effective' = 'effective'): ShiftCalc {
+export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effective' = 'effective'): ShiftCalc {
   const useActual = mode === 'effective' && !!shift.actual;
   const start = useActual ? shift.actual!.start : shift.start;
   const end = useActual ? shift.actual!.end : shift.end;
   const span = Math.max(0, end - start);
-  const rule = breaksFor(span, settings.breakTiers);
+  const rule = breaksFor(span, wp.breakTiers);
   const unpaidBreak = Math.min(
     span,
     useActual ? shift.actual!.unpaidBreak : (shift.unpaidBreak ?? rule.unpaidMinutes),
@@ -76,21 +81,21 @@ export function calcShift(shift: Shift, settings: Settings, mode: 'planned' | 'e
   const ph = !!shift.publicHoliday;
   for (let t = start; t < end; t++) {
     if (t >= breakStart && t < breakEnd) continue;
-    const b = bandAt(shift.date, t, ph);
+    const b = bandAt(shift.date, t, ph, wp);
     minutesByBand[b] = (minutesByBand[b] ?? 0) + 1;
   }
   const workedMinutes = span - unpaidBreak;
 
   let topUpMinutes = 0;
-  if (settings.minEngagementMinutes > 0 && workedMinutes > 0 && workedMinutes < settings.minEngagementMinutes) {
-    topUpMinutes = settings.minEngagementMinutes - workedMinutes;
-    const b = bandAt(shift.date, start, ph);
+  if (wp.minEngagementMinutes > 0 && workedMinutes > 0 && workedMinutes < wp.minEngagementMinutes) {
+    topUpMinutes = wp.minEngagementMinutes - workedMinutes;
+    const b = bandAt(shift.date, start, ph, wp);
     minutesByBand[b] = (minutesByBand[b] ?? 0) + topUpMinutes;
   }
 
   let pay = 0;
   for (const [band, mins] of Object.entries(minutesByBand) as [Band, number][]) {
-    pay += (mins * settings.baseRate * settings.multipliers[band]) / 60;
+    pay += (mins * wp.baseRate * wp.multipliers[band]) / 60;
   }
 
   return {
@@ -108,7 +113,7 @@ export function calcShift(shift: Shift, settings: Settings, mode: 'planned' | 'e
   };
 }
 
-export interface WeekSummary {
+export interface PaySummary {
   shifts: number;
   workedMinutes: number;
   unpaidBreak: number;
@@ -118,27 +123,46 @@ export interface WeekSummary {
   actualCount: number;
 }
 
-export function summarize(shifts: Shift[], settings: Settings, mode: 'planned' | 'effective'): WeekSummary {
-  const s: WeekSummary = {
-    shifts: shifts.length,
-    workedMinutes: 0,
-    unpaidBreak: 0,
-    paidBreak: 0,
-    gross: 0,
-    minutesByBand: {},
-    actualCount: 0,
-  };
+export interface WeekSummary extends PaySummary {
+  /** Per-workplace totals, keyed by workplace id */
+  byWorkplace: Record<string, PaySummary>;
+}
+
+const emptySummary = (): PaySummary => ({
+  shifts: 0,
+  workedMinutes: 0,
+  unpaidBreak: 0,
+  paidBreak: 0,
+  gross: 0,
+  minutesByBand: {},
+  actualCount: 0,
+});
+
+/** The workplace a shift is paid under (falls back to the first workplace for unassigned shifts) */
+export function workplaceFor(shift: Shift, workplaces: Workplace[]): Workplace | undefined {
+  return workplaces.find((w) => w.id === shift.workplaceId) ?? workplaces[0];
+}
+
+export function summarize(shifts: Shift[], workplaces: Workplace[], mode: 'planned' | 'effective'): WeekSummary {
+  const total: WeekSummary = { ...emptySummary(), byWorkplace: {} };
   for (const sh of shifts) {
-    const c = calcShift(sh, settings, mode);
-    s.workedMinutes += c.workedMinutes;
-    s.unpaidBreak += c.unpaidBreak;
-    s.paidBreak += c.paidBreak;
-    s.gross += c.pay;
-    if (c.usedActual) s.actualCount++;
-    for (const [b, m] of Object.entries(c.minutesByBand) as [Band, number][]) {
-      s.minutesByBand[b] = (s.minutesByBand[b] ?? 0) + m;
+    const wp = workplaceFor(sh, workplaces);
+    if (!wp) continue;
+    const c = calcShift(sh, wp, mode);
+    const part = (total.byWorkplace[wp.id] ??= emptySummary());
+    for (const s of [total, part]) {
+      s.shifts++;
+      s.workedMinutes += c.workedMinutes;
+      s.unpaidBreak += c.unpaidBreak;
+      s.paidBreak += c.paidBreak;
+      s.gross += c.pay;
+      if (c.usedActual) s.actualCount++;
+      for (const [b, m] of Object.entries(c.minutesByBand) as [Band, number][]) {
+        s.minutesByBand[b] = (s.minutesByBand[b] ?? 0) + m;
+      }
     }
   }
-  s.gross = round2(s.gross);
-  return s;
+  total.gross = round2(total.gross);
+  for (const part of Object.values(total.byWorkplace)) part.gross = round2(part.gross);
+  return total;
 }

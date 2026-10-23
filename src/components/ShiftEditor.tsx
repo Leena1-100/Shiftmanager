@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import type { Settings, Shift } from '../types';
+import type { Shift, Workplace } from '../types';
 import { breaksFor, calcShift } from '../lib/pay';
 import { newId } from '../lib/merge';
+import ConfirmButton from './ConfirmButton';
 import { fmtDateLong, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
 
 interface Props {
   shift: Shift | null;
   defaultDate: string;
-  settings: Settings;
+  workplaces: Workplace[];
   onClose: () => void;
   onSave: (s: Shift) => void;
   onDelete: (id: string) => void;
@@ -15,7 +16,11 @@ interface Props {
 
 const num = (v: string) => Math.max(0, Math.round(Number(v) || 0));
 
-export default function ShiftEditor({ shift, defaultDate, settings, onClose, onSave, onDelete }: Props) {
+export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, onSave, onDelete }: Props) {
+  const [workplaceId, setWorkplaceId] = useState(
+    workplaces.find((w) => w.id === shift?.workplaceId)?.id ?? workplaces[0].id,
+  );
+  const wp = workplaces.find((w) => w.id === workplaceId) ?? workplaces[0];
   const [date, setDate] = useState(shift?.date ?? defaultDate);
   const [start, setStart] = useState(fmtTime(shift?.start ?? 9 * 60));
   const [end, setEnd] = useState(fmtTime(shift?.end ?? 15 * 60));
@@ -34,7 +39,7 @@ export default function ShiftEditor({ shift, defaultDate, settings, onClose, onS
   const pe = parseHHMM(end);
   const valid = ps !== null && pe !== null && !!date;
   const [s0, e0] = valid ? normalizeRange(ps, pe) : [0, 0];
-  const rule = breaksFor(e0 - s0, settings.breakTiers);
+  const rule = breaksFor(e0 - s0, wp.breakTiers);
 
   const as = parseHHMM(aStart);
   const ae = parseHHMM(aEnd);
@@ -45,7 +50,7 @@ export default function ShiftEditor({ shift, defaultDate, settings, onClose, onS
     let actual: Shift['actual'];
     if (hasActual) {
       const [a1, a2] = normalizeRange(as!, ae!);
-      const aRule = breaksFor(a2 - a1, settings.breakTiers);
+      const aRule = breaksFor(a2 - a1, wp.breakTiers);
       actual = {
         start: a1,
         end: a2,
@@ -61,6 +66,7 @@ export default function ShiftEditor({ shift, defaultDate, settings, onClose, onS
       end: e0,
       source: shift?.source ?? 'manual',
       sources,
+      workplaceId: wp.id,
       unpaidBreak: breakAuto ? undefined : num(unpaid),
       publicHoliday: ph || undefined,
       note: note.trim() || undefined,
@@ -70,16 +76,29 @@ export default function ShiftEditor({ shift, defaultDate, settings, onClose, onS
   };
 
   const draft = build();
-  const planCalc = draft && calcShift(draft, settings, 'planned');
-  const effCalc = draft && calcShift(draft, settings, 'effective');
+  const planCalc = draft && calcShift(draft, wp, 'planned');
+  const effCalc = draft && calcShift(draft, wp, 'effective');
   const aSpan = as !== null && ae !== null ? normalizeRange(as, ae) : null;
-  const aRule = aSpan ? breaksFor(aSpan[1] - aSpan[0], settings.breakTiers) : null;
+  const aRule = aSpan ? breaksFor(aSpan[1] - aSpan[0], wp.breakTiers) : null;
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="sheet-grip" />
         <h3>{shift ? fmtDateLong(shift.date) : 'Add shift'}</h3>
+
+        {workplaces.length > 1 && (
+          <div className="field">
+            <span>Workplace</span>
+            <div className="seg small">
+              {workplaces.map((w) => (
+                <button key={w.id} className={w.id === wp.id ? 'on' : ''} onClick={() => setWorkplaceId(w.id)}>
+                  {w.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="group">
           <div className="group-title">Rostered shift</div>
@@ -175,9 +194,7 @@ export default function ShiftEditor({ shift, defaultDate, settings, onClose, onS
 
         <div className="sheet-actions">
           {shift && (
-            <button className="danger" onClick={() => confirm('Delete this shift?') && onDelete(shift.id)}>
-              Delete
-            </button>
+            <ConfirmButton label="Delete" confirmLabel="Tap again to delete" onConfirm={() => onDelete(shift.id)} />
           )}
           <button className="secondary" onClick={onClose}>
             Cancel

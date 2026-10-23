@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { AppState } from '../types';
-import { DEFAULT_SETTINGS } from './defaults';
+import type { AppState, Workplace } from '../types';
+import { DEFAULT_SETTINGS, newWorkplace } from './defaults';
 
 const KEY = 'shiftmoney:v1';
 
 export function emptyState(): AppState {
-  return { version: 1, settings: structuredClone(DEFAULT_SETTINGS), shifts: [], weeks: {} };
+  return { version: 2, onboarded: false, workplaces: [], settings: structuredClone(DEFAULT_SETTINGS), shifts: [], weeks: {} };
 }
 
 export function loadState(): AppState {
@@ -18,19 +18,43 @@ export function loadState(): AppState {
   }
 }
 
+/** Version 1 kept pay settings globally; turn them into a single workplace */
+function migrateV1Workplace(settings: Record<string, unknown>): Workplace {
+  const base = newWorkplace(0, 'fast-food');
+  return {
+    ...base,
+    name: 'My workplace',
+    employment: (settings.employment as Workplace['employment']) ?? base.employment,
+    baseRate: Number(settings.baseRate) || 0,
+    multipliers: { ...base.multipliers, ...(settings.multipliers as Workplace['multipliers']) },
+    breakTiers: (settings.breakTiers as Workplace['breakTiers']) ?? base.breakTiers,
+    minEngagementMinutes: Number(settings.minEngagementMinutes) || 0,
+  };
+}
+
 /** Bring saved data / a backup file up to the current shape (missing settings get defaults) */
 export function reviveState(data: unknown): AppState {
-  const d = data as Partial<AppState>;
+  const d = data as Partial<Omit<AppState, 'version'>> & { version?: number };
   if (!d || typeof d !== 'object' || !Array.isArray(d.shifts)) throw new Error('Invalid data');
   const base = emptyState();
+  let workplaces = Array.isArray(d.workplaces) ? d.workplaces : [];
+  if (d.version === 1 && d.settings) workplaces = [migrateV1Workplace(d.settings as unknown as Record<string, unknown>)];
+  const fallbackId = workplaces[0]?.id;
   return {
-    version: 1,
+    version: 2,
+    onboarded: d.version === 1 ? true : !!d.onboarded && workplaces.length > 0,
+    workplaces,
     settings: {
-      ...base.settings,
-      ...d.settings,
-      multipliers: { ...base.settings.multipliers, ...d.settings?.multipliers },
+      taxMode: d.settings?.taxMode ?? base.settings.taxMode,
+      superRate: d.settings?.superRate ?? base.settings.superRate,
+      weekStartDay: d.settings?.weekStartDay ?? base.settings.weekStartDay,
+      mergePriority: d.settings?.mergePriority ?? base.settings.mergePriority,
     },
-    shifts: d.shifts.map((s) => ({ ...s, sources: s.sources ?? [s.source] })),
+    shifts: d.shifts.map((s) => ({
+      ...s,
+      sources: s.sources ?? [s.source],
+      workplaceId: workplaces.some((w) => w.id === s.workplaceId) ? s.workplaceId : fallbackId,
+    })),
     weeks: d.weeks ?? {},
   };
 }

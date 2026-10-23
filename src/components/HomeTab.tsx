@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import type { Band, Settings, Shift, Source } from '../types';
-import { calcShift, summarize } from '../lib/pay';
+import type { Band, Settings, Shift, Source, Workplace } from '../types';
+import { calcShift, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { taxFreeRoom, weeklyWithholding, WEEKLY_TAX_FREE } from '../lib/tax';
-import { BAND_LABEL } from '../lib/defaults';
+import { bandLabel } from '../lib/defaults';
 import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
 import { PlusIcon, SwapIcon, ClockIcon, CheckIcon } from './Icons';
 
@@ -11,6 +11,7 @@ export const SOURCE_LABEL: Record<Source, string> = { tanda: 'Tanda', message: '
 
 interface Props {
   settings: Settings;
+  workplaces: Workplace[];
   shifts: Shift[];
   weekStart: string;
   onEdit: (s: Shift) => void;
@@ -19,16 +20,21 @@ interface Props {
   onGoImport: () => void;
 }
 
-export default function HomeTab({ settings, shifts, onEdit, onAdd, onSave, onGoImport }: Props) {
+export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, onSave, onGoImport }: Props) {
   const [mode, setMode] = useState<'planned' | 'effective'>('effective');
-  const planned = summarize(shifts, settings, 'planned');
-  const effective = summarize(shifts, settings, 'effective');
+  const planned = summarize(shifts, workplaces, 'planned');
+  const effective = summarize(shifts, workplaces, 'effective');
   const sum = mode === 'planned' ? planned : effective;
   const tax = weeklyWithholding(sum.gross, settings.taxMode);
   const net = sum.gross - tax;
   const room = taxFreeRoom(sum.gross, settings.taxMode);
   const diff = effective.gross - planned.gross;
   const superAmt = sum.gross * settings.superRate;
+  // Estimate "hours until tax" at the rate of the workplace worked most this week
+  const mainWp =
+    workplaces.find((w) => w.id === Object.entries(sum.byWorkplace).sort((a, b) => b[1].workedMinutes - a[1].workedMinutes)[0]?.[0]) ??
+    workplaces[0];
+  const multiWp = workplaces.length > 1;
 
   return (
     <div className="stack">
@@ -80,7 +86,7 @@ export default function HomeTab({ settings, shifts, onEdit, onAdd, onSave, onGoI
           {room > 0 ? (
             <p className="small">
               No tax for another {fmtMoney(room)} · about{' '}
-              <b>{fmtDuration((room / (settings.baseRate * settings.multipliers.weekday)) * 60)}</b> more at the weekday rate
+              <b>{fmtDuration((room / (mainWp.baseRate * mainWp.multipliers.weekday)) * 60)}</b> more at {multiWp ? `${mainWp.name}'s` : 'the'} weekday rate
             </p>
           ) : (
             <p className="small">
@@ -110,7 +116,7 @@ export default function HomeTab({ settings, shifts, onEdit, onAdd, onSave, onGoI
       ) : (
         <div className="stack-sm">
           {shifts.map((s) => (
-            <ShiftCard key={s.id} shift={s} settings={settings} onEdit={() => onEdit(s)} onSwap={() => onSave(swapAlt(s))} />
+            <ShiftCard key={s.id} shift={s} wp={workplaceFor(s, workplaces)!} showWorkplace={multiWp} onEdit={() => onEdit(s)} onSwap={() => onSave(swapAlt(s))} />
           ))}
         </div>
       )}
@@ -118,20 +124,40 @@ export default function HomeTab({ settings, shifts, onEdit, onAdd, onSave, onGoI
       {sum.gross > 0 && (
         <section className="card">
           <div className="card-title">Pay by rate</div>
-          <ul className="breakdown">
-            {(Object.entries(sum.minutesByBand) as [Band, number][]).map(([band, mins]) => (
-              <li key={band}>
-                <span>
-                  {BAND_LABEL[band]} <span className="muted">×{settings.multipliers[band]}</span>
-                </span>
-                <span>{fmtDuration(mins)}</span>
-                <b>{fmtMoney((mins * settings.baseRate * settings.multipliers[band]) / 60)}</b>
-              </li>
-            ))}
-          </ul>
-          <p className="small muted">
-            Base rate {fmtMoney(settings.baseRate)}/h · Super (paid separately by employer) ≈ {fmtMoney(superAmt)}
-          </p>
+          {workplaces
+            .filter((wp) => sum.byWorkplace[wp.id])
+            .map((wp) => {
+              const part = sum.byWorkplace[wp.id];
+              return (
+                <div key={wp.id} className="stack-sm">
+                  {multiWp && (
+                    <div className="wp-subhead">
+                      <span className="wp-dot" style={{ background: wp.color }} />
+                      <b>{wp.name}</b>
+                      <span className="muted small">{fmtDuration(part.workedMinutes)}</span>
+                      <b className="right">{fmtMoney(part.gross)}</b>
+                    </div>
+                  )}
+                  <ul className="breakdown">
+                    {(Object.entries(part.minutesByBand) as [Band, number][]).map(([band, mins]) => (
+                      <li key={band}>
+                        <span>
+                          {bandLabel(band, wp)} <span className="muted">×{wp.multipliers[band]}</span>
+                        </span>
+                        <span>{fmtDuration(mins)}</span>
+                        <b>{fmtMoney((mins * wp.baseRate * wp.multipliers[band]) / 60)}</b>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="small muted">
+                    {multiWp ? '' : `${wp.name} · `}
+                    {wp.level ? `${wp.level} · ` : ''}
+                    {fmtMoney(wp.baseRate)}/h
+                  </p>
+                </div>
+              );
+            })}
+          <p className="small muted">Super (paid separately by your employer) ≈ {fmtMoney(superAmt)}</p>
         </section>
       )}
     </div>
@@ -147,9 +173,21 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ShiftCard({ shift, settings, onEdit, onSwap }: { shift: Shift; settings: Settings; onEdit: () => void; onSwap: () => void }) {
-  const plan = calcShift(shift, settings, 'planned');
-  const eff = calcShift(shift, settings, 'effective');
+function ShiftCard({
+  shift,
+  wp,
+  showWorkplace,
+  onEdit,
+  onSwap,
+}: {
+  shift: Shift;
+  wp: Workplace;
+  showWorkplace: boolean;
+  onEdit: () => void;
+  onSwap: () => void;
+}) {
+  const plan = calcShift(shift, wp, 'planned');
+  const eff = calcShift(shift, wp, 'effective');
   const dow = dayOfWeek(shift.date);
   const weekend = dow === 0 || dow === 6;
 
@@ -164,6 +202,12 @@ function ShiftCard({ shift, settings, onEdit, onSwap }: { shift: Shift; settings
           {fmtTime(shift.start)} – {fmtTime(shift.end)}
           {shift.end >= 1440 && <span className="muted small"> (+1 day)</span>}
         </div>
+        {showWorkplace && (
+          <div className="wp-tag">
+            <span className="wp-dot" style={{ background: wp.color }} />
+            {wp.name}
+          </div>
+        )}
         <div className="shift-meta">
           {shift.sources.map((src) => (
             <span key={src} className={`badge ${src}`}>

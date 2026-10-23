@@ -1,0 +1,12 @@
+{
+  "name": "시프트머니 - 시프트 & 급여 관리",
+  "short_name": "시프트머니",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3faf8",
+  "theme_color": "#1ec8a5",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

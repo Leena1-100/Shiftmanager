@@ -227,3 +227,80 @@ describe('award minimum rates and penalties', () => {
     expect(wp.baseRate).toBe(31);
   });
 });
+
+describe('Tanda screenshots', () => {
+  // Real OCR output of a Tanda roster screenshot (status bar noise and misread words included)
+  const OCR = "MOIRA DCT - SUN, 25 OCT 2130s B5ED2\nV HIDE PAST DATES (3)\nMon, 19 Oct \u00a9 8.2hrs| $229.32\n\u00ae 7:18 - 16:00\n! FOH @ Queens Plaza\nRostered / worked details A\nWorked: 7:18-16:00 +0.03 hrs\nRostered: 7:20- 16:00\nBreaks: 10m ZIG) 30m\nunpaid\nWed, 21 Oct \u00ae 5.55hrs| $169.53\n\u00ae 10:30- 16:03\n' FOH @ Queens Plaza\nRostered / worked details A\nWorked: 10:30- 16:03 +0.55 hrs\nRostered: 10:30 - 16:00\nBreaks: 10m paid\nThu, 22 Oct \u00a9 8.08 hrs| $226.08\n\u00ae 7:30- 16:06\n' FOH @ Queens Plaza\nRostered / worked details AN\nWorked: 7:30- 16:06 -0.08 hrs\nRostered: 7:20- 16:00\nBreaks: 10m Bel 31m\nunpaid\nL,] H x (mm)\nHOME ROSTER TIMESHEETS LEAVE CHATS\n\n";
+
+  it('reads each day as one shift with roster, worked times, breaks and Tanda pay', () => {
+    const shifts = parseShifts(OCR, 'tanda', '2026-10-19');
+    expect(shifts.map(({ date, start, end, actual, tandaPay }) => ({ date, start, end, actual, tandaPay }))).toEqual([
+      {
+        date: '2026-10-19',
+        start: hm(7, 20),
+        end: hm(16),
+        actual: { start: hm(7, 18), end: hm(16), unpaidBreak: 30, paidBreak: 10 },
+        tandaPay: { hours: 8.2, pay: 229.32 },
+      },
+      {
+        date: '2026-10-21',
+        start: hm(10, 30),
+        end: hm(16),
+        actual: { start: hm(10, 30), end: hm(16, 3), unpaidBreak: 0, paidBreak: 10 },
+        tandaPay: { hours: 5.55, pay: 169.53 },
+      },
+      {
+        date: '2026-10-22',
+        start: hm(7, 20),
+        end: hm(16),
+        actual: { start: hm(7, 30), end: hm(16, 6), unpaidBreak: 31, paidBreak: 10 },
+        tandaPay: { hours: 8.08, pay: 226.08 },
+      },
+    ]);
+  });
+
+  it('worked minutes match Tanda hours', () => {
+    const wp = newWorkplace(0);
+    const [mon, wed, thu] = parseShifts(OCR, 'tanda', '2026-10-19').map((p, i) => ({
+      ...p,
+      id: String(i),
+      sources: ['tanda' as const],
+    }));
+    expect(calcShift(mon, wp).workedMinutes).toBe(492); // 8.2h
+    expect(calcShift(wed, wp).workedMinutes).toBe(333); // 5.55h
+    expect(calcShift(thu, wp).workedMinutes).toBe(485); // 8.08h
+  });
+
+  it("uses Tanda's dollars for worked shifts, and the roster for the plan", () => {
+    const wp = newWorkplace(0);
+    const [mon] = parseShifts(OCR, 'tanda', '2026-10-19');
+    const shift = { ...mon, id: 'm', sources: ['tanda' as const] };
+    expect(calcShift(shift, wp).pay).toBe(229.32);
+    expect(calcShift(shift, wp).fromTanda).toBe(true);
+    expect(calcShift(shift, wp, 'planned').fromTanda).toBe(false);
+  });
+
+  it('a future Tanda shift with no hours is roster only', () => {
+    const [s] = parseShifts('Sat, 24 Oct\n10:00 - 16:00\nFOH @ Queens Plaza\nBreaks: 10m paid, 30m unpaid', 'tanda', '2026-10-19');
+    expect(s).toMatchObject({ date: '2026-10-24', start: hm(10), end: hm(16), unpaidBreak: 30 });
+    expect(s.actual).toBeUndefined();
+    expect(s.tandaPay).toBeUndefined();
+  });
+});
+
+describe('pasted messages', () => {
+  it('reads times from a message pasted as-is', () => {
+    const msg = `Hi Leena! Here are your shifts for next week 😊
+Monday 26/10 - 7:20am to 4pm
+Wed 10.30-4
+Thursday 7:20 - 16:00 (30 min break)
+Sat 31st: 9-5:30
+Thanks, see you then!`;
+    expect(parseShifts(msg, 'message', '2026-10-26').map(pick)).toEqual([
+      { date: '2026-10-26', start: hm(7, 20), end: hm(16), unpaidBreak: undefined },
+      { date: '2026-10-28', start: hm(10, 30), end: hm(16), unpaidBreak: undefined },
+      { date: '2026-10-29', start: hm(7, 20), end: hm(16), unpaidBreak: 30 },
+      { date: '2026-10-31', start: hm(9), end: hm(17, 30), unpaidBreak: undefined },
+    ]);
+  });
+});

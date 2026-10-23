@@ -34,6 +34,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, o
   const [aEnd, setAEnd] = useState(fmtTime(shift?.actual?.end ?? shift?.end ?? 15 * 60));
   const [aUnpaid, setAUnpaid] = useState(String(shift?.actual?.unpaidBreak ?? ''));
   const [aPaid, setAPaid] = useState(String(shift?.actual?.paidBreak ?? ''));
+  const [useTanda, setUseTanda] = useState(!!shift?.tandaPay);
 
   const ps = parseHHMM(start);
   const pe = parseHHMM(end);
@@ -71,6 +72,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, o
       publicHoliday: ph || undefined,
       note: note.trim() || undefined,
       actual,
+      tandaPay: hasActual && useTanda ? shift?.tandaPay : undefined,
       alt: shift?.alt,
     };
   };
@@ -186,9 +188,18 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, o
                   )}
                 </p>
               )}
+              {shift?.tandaPay && (
+                <label className="check wrap-text">
+                  <input type="checkbox" checked={useTanda} onChange={(e) => setUseTanda(e.target.checked)} />
+                  Use Tanda's pay ({shift.tandaPay.hours} hrs | {fmtMoney(shift.tandaPay.pay)}) instead of calculating
+                </label>
+              )}
             </>
           ) : (
-            <p className="small muted">After your shift, enter the clock-in/out and break times from your Tanda timesheet to recalculate the pay.</p>
+            <p className="small muted">
+              After your shift, turn this on and adjust the clock-in/out and break minutes. Times start at the roster, so you only
+              change what was different.
+            </p>
           )}
         </div>
 

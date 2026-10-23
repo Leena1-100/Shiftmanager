@@ -1,4 +1,4 @@
-import type { Settings, Shift, Source } from '../types';
+import type { ActualWork, Settings, Shift, Source, TandaPay } from '../types';
 
 export interface IncomingShift {
   date: string;
@@ -8,6 +8,8 @@ export interface IncomingShift {
   source: Source;
   workplaceId?: string;
   note?: string;
+  actual?: ActualWork;
+  tandaPay?: TandaPay;
 }
 
 export type MergeAction = 'added' | 'duplicate' | 'replaced' | 'kept';
@@ -38,7 +40,8 @@ function overlaps(a: Slot, b: Slot) {
  * - No overlapping shift at the same workplace on the same day → add it
  * - Same times → just record the extra source (duplicate)
  * - Different times → apply the higher-priority source and keep the other as `alt` (swappable any time)
- * - Recorded actual hours are always kept
+ * - Worked hours and pay from Tanda always replace what was recorded before (they are what gets paid);
+ *   otherwise recorded actual hours are kept
  */
 export function mergeShifts(
   existing: Shift[],
@@ -61,6 +64,8 @@ export function mergeShifts(
         unpaidBreak: inc.unpaidBreak,
         workplaceId: inc.workplaceId,
         note: inc.note,
+        actual: inc.actual,
+        tandaPay: inc.tandaPay,
       };
       shifts.push(s);
       events.push({ action: 'added', shift: s });
@@ -68,6 +73,8 @@ export function mergeShifts(
     }
 
     if (!target.sources.includes(inc.source)) target.sources.push(inc.source);
+    if (inc.actual) target.actual = inc.actual;
+    if (inc.tandaPay) target.tandaPay = inc.tandaPay;
 
     if (target.start === inc.start && target.end === inc.end) {
       if (target.unpaidBreak === undefined && inc.unpaidBreak !== undefined) target.unpaidBreak = inc.unpaidBreak;

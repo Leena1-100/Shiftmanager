@@ -1319,3 +1319,33 @@ details.advanced summary {
 .field .plain {
   font-weight: 400;
 }
+
+.preview .row-label {
+  flex-basis: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sub);
+  margin-bottom: -2px;
+}
+
+.worked-line {
+  flex-basis: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mint-strong);
+}
+
+.worked-line svg {
+  vertical-align: -2px;
+}
+
+.check.wrap-text {
+  white-space: normal;
+  align-items: flex-start;
+  line-height: 1.4;
+}
+
+.shift-pay .badge {
+  align-self: flex-end;
+  margin-top: 2px;
+}

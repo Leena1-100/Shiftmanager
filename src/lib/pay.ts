@@ -51,6 +51,8 @@ export interface ShiftCalc {
   minutesByBand: Partial<Record<Band, number>>;
   pay: number;
   usedActual: boolean;
+  /** Pay taken from Tanda instead of calculated */
+  fromTanda: boolean;
 }
 
 export function round2(n: number): number {
@@ -97,6 +99,9 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
   for (const [band, mins] of Object.entries(minutesByBand) as [Band, number][]) {
     pay += (mins * wp.baseRate * wp.multipliers[band]) / 60;
   }
+  // Once a shift is worked, Tanda's own dollar figure is what gets paid
+  const fromTanda = useActual && !!shift.tandaPay;
+  if (fromTanda) pay = shift.tandaPay!.pay;
 
   return {
     start,
@@ -110,6 +115,7 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
     minutesByBand,
     pay: round2(pay),
     usedActual: useActual,
+    fromTanda,
   };
 }
 

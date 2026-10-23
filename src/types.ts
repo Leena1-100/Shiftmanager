@@ -8,6 +8,12 @@ export interface ActualWork {
   paidBreak: number;
 }
 
+/** Hours and pay Tanda shows for a shift that has been worked (used as the shift's pay) */
+export interface TandaPay {
+  hours: number;
+  pay: number;
+}
+
 /** A version of the shift from another source that is not currently applied */
 export interface AltVersion {
   source: Source;
@@ -35,6 +41,8 @@ export interface Shift {
   publicHoliday?: boolean;
   note?: string;
   actual?: ActualWork;
+  /** Pay confirmed by Tanda; when set it replaces the calculated pay for the worked shift */
+  tandaPay?: TandaPay;
   alt?: AltVersion;
 }
 

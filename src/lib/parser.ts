@@ -1,4 +1,4 @@
-import type { Source } from '../types';
+import type { ActualWork, Source, TandaPay } from '../types';
 import { addDays, dayOfWeek, diffDays, makeISO, normalizeRange } from './time';
 
 export interface ParsedShift {
@@ -10,6 +10,10 @@ export interface ParsedShift {
   dateGuessed: boolean;
   raw: string;
   source: Source;
+  /** Worked times and breaks (Tanda timesheet) */
+  actual?: ActualWork;
+  /** Hours and pay shown by Tanda for a worked shift */
+  tandaPay?: TandaPay;
 }
 
 const MONTHS: Record<string, number> = {
@@ -189,7 +193,121 @@ function normalize(text: string): string {
  * Extract shifts from Tanda or message text.
  * @param weekStart lines that only name a weekday are placed in this week
  */
+/** All plausible time ranges in a string, as [start, end] minutes */
+function rangesIn(text: string): [number, number][] {
+  const out: [number, number][] = [];
+  RANGE_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = RANGE_RE.exec(text))) {
+    const a = readTime(m.slice(1, 8));
+    const b = readTime(m.slice(8, 15));
+    if (!a || !b) continue;
+    const [start, end] = resolveRange(a, b);
+    if (end - start > 16 * 60 || end - start < 15) continue;
+    out.push([start, end]);
+  }
+  return out;
+}
+
+const TANDA_PAY_RE = /(\d{1,2}(?:\.\d{1,2})?)\s*hrs?\s*[|Il1!]?\s*\$\s*([\d,]+\.\d{2})/i;
+const BREAK_PART_RE = /(\d{1,3})\s*m(?:ins?)?\b([^\d]*)/gi;
+
+/** Range on the line that carries a label like "Worked:" (OCR may drop the colon) */
+function labelledRange(lines: string[], label: RegExp): [number, number] | null {
+  for (const line of lines) {
+    const m = label.exec(line);
+    if (m) {
+      const r = rangesIn(line.slice(m.index + m[0].length));
+      if (r.length) return r[0];
+    }
+  }
+  return null;
+}
+
+/**
+ * Tanda roster / timesheet screens: one block per day, e.g.
+ *   Mon, 19 Oct        8.2 hrs | $229.32
+ *   7:18 - 16:00
+ *   Worked:   7:18 - 16:00   +0.03 hrs
+ *   Rostered: 7:20 - 16:00
+ *   Breaks:   10m paid, 30m unpaid
+ * Each day becomes one shift: rostered times as the plan, worked times + breaks as the actual,
+ * and Tanda's hours and dollars as the pay once the shift has been worked.
+ */
+export function parseTandaBlocks(text: string, weekStart: string): ParsedShift[] {
+  const blocks: { date: string; header: string; lines: string[] }[] = [];
+  for (const rawLine of normalize(text).split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const hit = extractDate(line, weekStart);
+    // "MON, 19 OCT - SUN, 25 OCT" is the week heading, not a day
+    const weekdayCount = (line.match(new RegExp(EN_WEEKDAY_RE.source, 'gi')) ?? []).length;
+    let date = hit.date;
+    if (!date && hit.weekday !== null && rangesIn(hit.stripped).length === 0) {
+      date = addDays(weekStart, (hit.weekday - dayOfWeek(weekStart) + 7) % 7);
+    }
+    if (date && weekdayCount < 2) {
+      blocks.push({ date, header: line, lines: [hit.stripped] });
+    } else if (blocks.length) {
+      blocks[blocks.length - 1].lines.push(line);
+    }
+  }
+
+  const out: ParsedShift[] = [];
+  for (const b of blocks) {
+    const flat = b.lines.join(' ').replace(/\s+/g, ' ');
+    const worked = labelledRange(b.lines, /worked\s*:?/i);
+    const rostered = labelledRange(b.lines, /roster(?:ed)?\s*:?/i);
+    const headline = b.lines
+      .filter((l) => !/worked|roster/i.test(l))
+      .flatMap((l) => rangesIn(l))[0];
+    const payMatch = TANDA_PAY_RE.exec(flat);
+    const tandaPay = payMatch
+      ? { hours: Number(payMatch[1]), pay: Number(payMatch[2].replace(/,/g, '')) }
+      : undefined;
+
+    // Tanda writes "10m paid, 30m unpaid". OCR often garbles "paid" (e.g. "10m ZIG) 30m unpaid"),
+    // so minutes followed by "unpaid" or nothing (a plain "Break 30m" meal break) are unpaid,
+    // and minutes followed by any other word are paid.
+    let paid = 0;
+    let unpaid = 0;
+    const breakAt = flat.search(/breaks?\b/i);
+    const breakText = breakAt >= 0 ? flat.slice(breakAt).replace(/^breaks?\s*:?/i, ' ') : '';
+    const breakParts = [...breakText.matchAll(BREAK_PART_RE)];
+    for (const m of breakParts) {
+      if (/^\s*unpaid/i.test(m[2]) || !/[a-z]/i.test(m[2])) unpaid += Number(m[1]);
+      else paid += Number(m[1]);
+    }
+    const hasBreaks = breakParts.length > 0;
+
+    const planned = rostered ?? headline ?? worked;
+    if (!planned) continue;
+    // The big time at the top of a day is the worked time once Tanda shows hours and dollars
+    const actualRange = worked ?? (tandaPay && headline ? headline : null);
+    const shift: ParsedShift = {
+      date: b.date,
+      start: planned[0],
+      end: planned[1],
+      dateGuessed: false,
+      raw: b.header,
+      source: 'tanda',
+    };
+    if (actualRange) {
+      shift.actual = { start: actualRange[0], end: actualRange[1], unpaidBreak: unpaid, paidBreak: paid };
+      if (tandaPay) shift.tandaPay = tandaPay;
+    } else if (hasBreaks) {
+      shift.unpaidBreak = unpaid;
+    }
+    out.push(shift);
+  }
+  return out;
+}
+
 export function parseShifts(text: string, source: Source, weekStart: string): ParsedShift[] {
+  if (source === 'tanda') {
+    const blocks = parseTandaBlocks(text, weekStart);
+    if (blocks.length) return blocks;
+  }
   const out: ParsedShift[] = [];
   const lines = normalize(text).split(/\r?\n/);
   let ctxDate: string | null = null;
@@ -207,14 +325,7 @@ export function parseShifts(text: string, source: Source, weekStart: string): Pa
     if (lineDate) ctxDate = lineDate;
 
     const found: ParsedShift[] = [];
-    RANGE_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = RANGE_RE.exec(hit.stripped))) {
-      const a = readTime(m.slice(1, 8));
-      const b = readTime(m.slice(8, 15));
-      if (!a || !b) continue;
-      const [start, end] = resolveRange(a, b);
-      if (end - start > 16 * 60 || end - start < 15) continue;
+    for (const [start, end] of rangesIn(hit.stripped)) {
       let date = lineDate ?? ctxDate;
       let guessed = false;
       if (!date) {

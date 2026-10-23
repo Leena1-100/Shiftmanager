@@ -148,6 +148,24 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
                         <b>{fmtMoney((mins * wp.baseRate * wp.multipliers[band]) / 60)}</b>
                       </li>
                     ))}
+                    {(() => {
+                      // Worked shifts use Tanda's dollars, which can differ a little from the rate maths
+                      const byRate = (Object.entries(part.minutesByBand) as [Band, number][]).reduce(
+                        (acc, [band, mins]) => acc + (mins * wp.baseRate * wp.multipliers[band]) / 60,
+                        0,
+                      );
+                      const adj = part.gross - byRate;
+                      return Math.abs(adj) >= 0.01 ? (
+                        <li>
+                          <span>Adjusted to Tanda pay</span>
+                          <span />
+                          <b>
+                            {adj > 0 ? '+' : '-'}
+                            {fmtMoney(Math.abs(adj))}
+                          </b>
+                        </li>
+                      ) : null;
+                    })()}
                   </ul>
                   <p className="small muted">
                     {multiWp ? '' : `${wp.name} · `}
@@ -216,12 +234,12 @@ function ShiftCard({
           ))}
           {shift.publicHoliday && <span className="badge ph">Public holiday</span>}
           <span className="muted">
-            Paid break {plan.paidBreak}m · Unpaid {plan.unpaidBreak}m
+            Paid break {eff.paidBreak}m · Unpaid {eff.unpaidBreak}m
           </span>
         </div>
         {shift.actual ? (
           <div className="shift-actual">
-            <CheckIcon size={14} /> Actual {fmtTime(shift.actual.start)}–{fmtTime(shift.actual.end)} · Unpaid {shift.actual.unpaidBreak}m ·{' '}
+            <CheckIcon size={14} /> Worked {fmtTime(shift.actual.start)}–{fmtTime(shift.actual.end)} · Unpaid {shift.actual.unpaidBreak}m ·{' '}
             {fmtDuration(eff.workedMinutes)}
             {eff.workedMinutes !== plan.workedMinutes && (
               <span className={eff.workedMinutes > plan.workedMinutes ? 'up' : 'down'}>
@@ -251,6 +269,7 @@ function ShiftCard({
       <div className="shift-pay">
         <b>{fmtMoney(eff.pay)}</b>
         <span className="muted small">{fmtDuration(eff.workedMinutes)}</span>
+        {eff.fromTanda && <span className="badge tanda">Tanda pay</span>}
       </div>
     </article>
   );

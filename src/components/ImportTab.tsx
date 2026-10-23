@@ -3,8 +3,8 @@ import type { Settings, Shift, Source, Workplace } from '../types';
 import { parseShifts, type ParsedShift } from '../lib/parser';
 import { mergeShifts, type MergeAction } from '../lib/merge';
 import { imageToText } from '../lib/ocr';
-import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
-import { ImageIcon } from './Icons';
+import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtMoney, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
+import { CheckIcon, ImageIcon } from './Icons';
 import { SOURCE_LABEL } from './HomeTab';
 
 interface Props {
@@ -81,7 +81,7 @@ export default function ImportTab({ settings, workplaces, allShifts, weekStart, 
     const incoming = rows
       .filter((r) => r.include)
       .sort((a, b) => (a.source === b.source ? 0 : a.source === 'tanda' ? -1 : 1))
-      .map(({ date, start, end, unpaidBreak, source }) => ({ date, start, end, unpaidBreak, source, workplaceId }));
+      .map(({ date, start, end, unpaidBreak, source, actual, tandaPay }) => ({ date, start, end, unpaidBreak, source, actual, tandaPay, workplaceId }));
     return mergeShifts(allShifts, incoming, settings.mergePriority);
   }, [rows, allShifts, settings.mergePriority, workplaceId]);
 
@@ -170,10 +170,24 @@ export default function ImportTab({ settings, workplaces, allShifts, weekStart, 
                   onChange={(e) => e.target.value && updateRow(r.key, { date: e.target.value, dateGuessed: false })}
                 />
                 <span className="dow">{WEEKDAY_SHORT[dayOfWeek(r.date)]}</span>
+                <span className="row-label">Rostered</span>
                 <TimeInput value={r.start} onChange={(v) => updateRow(r.key, { start: v, end: normalizeRange(v, r.end % 1440)[1] })} />
                 <span>–</span>
                 <TimeInput value={r.end} onChange={(v) => updateRow(r.key, { end: normalizeRange(r.start, v)[1] })} />
-                {r.unpaidBreak !== undefined && <span className="small muted">Break {r.unpaidBreak}m</span>}
+                {r.unpaidBreak !== undefined && !r.actual && <span className="small muted">Unpaid break {r.unpaidBreak}m</span>}
+                {r.actual ? (
+                  <span className="worked-line">
+                    <CheckIcon size={13} /> Worked {fmtTime(r.actual.start)}–{fmtTime(r.actual.end)} · {r.actual.paidBreak}m paid, {r.actual.unpaidBreak}m unpaid
+                    {r.tandaPay && (
+                      <b>
+                        {' '}
+                        · {r.tandaPay.hours} hrs | {fmtMoney(r.tandaPay.pay)}
+                      </b>
+                    )}
+                  </span>
+                ) : (
+                  <span className="raw">You can log the actual minutes after the shift.</span>
+                )}
                 <span className="raw" title={r.raw}>
                   {r.raw}
                 </span>

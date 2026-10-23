@@ -43,6 +43,8 @@ export interface Shift {
   actual?: ActualWork;
   /** Pay confirmed by Tanda; when set it replaces the calculated pay for the worked shift */
   tandaPay?: TandaPay;
+  /** Take tax and super off a message-roster shift (they are left off by default) */
+  applyTax?: boolean;
   alt?: AltVersion;
 }
 

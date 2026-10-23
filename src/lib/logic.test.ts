@@ -316,4 +316,12 @@ describe('message rosters are not taxed', () => {
     expect(s.untaxedGross).toBe(165);
     expect(taxableGross(s)).toBe(165);
   });
+
+  it('tax can be turned on for a message shift', () => {
+    const wp = { ...newWorkplace(0), id: 'w', baseRate: 30 };
+    const shift: Shift = { id: 'a', date: '2026-10-27', start: hm(9), end: hm(15), workplaceId: 'w', source: 'message', sources: ['message'], applyTax: true };
+    const s = summarize([shift], [wp], 'effective');
+    expect(s.untaxedGross).toBe(0);
+    expect(taxableGross(s)).toBe(165);
+  });
 });

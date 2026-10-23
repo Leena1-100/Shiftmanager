@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Shift, Workplace } from '../types';
-import { breaksFor, calcShift } from '../lib/pay';
+import { breaksFor, calcShift, isMessageOnly } from '../lib/pay';
 import { newId } from '../lib/merge';
 import ConfirmButton from './ConfirmButton';
 import { fmtDateLong, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
@@ -35,6 +35,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, o
   const [aUnpaid, setAUnpaid] = useState(String(shift?.actual?.unpaidBreak ?? ''));
   const [aPaid, setAPaid] = useState(String(shift?.actual?.paidBreak ?? ''));
   const [useTanda, setUseTanda] = useState(!!shift?.tandaPay);
+  const [applyTax, setApplyTax] = useState(!!shift?.applyTax);
 
   const ps = parseHHMM(start);
   const pe = parseHHMM(end);
@@ -73,6 +74,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, o
       note: note.trim() || undefined,
       actual,
       tandaPay: hasActual && useTanda ? shift?.tandaPay : undefined,
+      applyTax: applyTax || undefined,
       alt: shift?.alt,
     };
   };
@@ -202,6 +204,22 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, o
             </p>
           )}
         </div>
+
+        {shift && isMessageOnly(shift) && (
+          <div className="tax-toggle">
+            <div>
+              <b>{applyTax ? 'Tax and super applied' : 'No tax or super taken off'}</b>
+              <p className="small muted">
+                {applyTax
+                  ? 'This shift counts towards your tax and super estimate.'
+                  : 'Message rosters are counted at their full amount.'}
+              </p>
+            </div>
+            <button type="button" className={applyTax ? 'secondary' : 'primary'} onClick={() => setApplyTax(!applyTax)}>
+              {applyTax ? 'Remove tax & super' : 'Apply tax & super'}
+            </button>
+          </div>
+        )}
 
         <div className="sheet-actions">
           {shift && (

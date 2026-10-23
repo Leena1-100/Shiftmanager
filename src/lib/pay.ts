@@ -147,9 +147,14 @@ const emptySummary = (): PaySummary => ({
   untaxedGross: 0,
 });
 
-/** Shifts known only from a pasted message (never confirmed by Tanda) are counted without tax or super */
-export function isUntaxed(shift: Shift): boolean {
+/** Shifts known only from a pasted message (never confirmed by Tanda) */
+export function isMessageOnly(shift: Shift): boolean {
   return shift.sources.length > 0 && shift.sources.every((s) => s === 'message');
+}
+
+/** Message-roster shifts are counted without tax or super unless the user turns tax on for that shift */
+export function isUntaxed(shift: Shift): boolean {
+  return isMessageOnly(shift) && !shift.applyTax;
 }
 
 /** The part of a summary that tax and super are worked out on */

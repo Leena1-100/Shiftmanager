@@ -1560,3 +1560,19 @@ details.advanced summary {
   color: #d9761c;
   white-space: nowrap;
 }
+
+.tax-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--msg-soft);
+}
+
+.tax-toggle button {
+  flex: none;
+  padding: 10px 14px;
+  font-size: 14px;
+}

@@ -3,7 +3,7 @@ import { parseShifts } from './parser';
 import { calcShift, breaksFor, summarize } from './pay';
 import { mergeShifts, swapAlt } from './merge';
 import { weeklyWithholding, annualTax } from './tax';
-import { DEFAULT_BREAK_TIERS, applyAward, newWorkplace } from './defaults';
+import { DEFAULT_BREAK_TIERS, applyAward, awardMinimumRate, newWorkplace } from './defaults';
 import { reviveState } from './storage';
 import type { Shift } from '../types';
 
@@ -141,7 +141,7 @@ function round(n: number) {
 
 describe('workplaces', () => {
   const ff = { ...newWorkplace(0, 'fast-food'), id: 'ff', baseRate: 30 };
-  const retail = { ...applyAward(newWorkplace(1), 'general-retail'), id: 'rt', baseRate: 30 };
+  const retail = { ...applyAward(newWorkplace(1), { award: 'general-retail' }), id: 'rt', baseRate: 30 };
   const shift = (workplaceId: string): Shift => ({
     id: workplaceId,
     date: '2026-10-27',
@@ -184,5 +184,46 @@ describe('workplaces', () => {
     expect(st.workplaces[0]).toMatchObject({ baseRate: 27, employment: 'casual' });
     expect(st.shifts[0].workplaceId).toBe(st.workplaces[0].id);
     expect(st.settings).toEqual({ taxMode: 'whm', superRate: 0.12, weekStartDay: 1, mergePriority: 'tanda' });
+  });
+});
+
+describe('award minimum rates and penalties', () => {
+  it('a new fast food workplace starts at the Level 1 adult rate', () => {
+    const wp = newWorkplace(0);
+    expect(wp.level).toBe('Level 1');
+    expect(wp.baseRate).toBe(27.81);
+  });
+
+  it('Level 1 Sunday is 125% part-time and 150% casual (same as Saturday)', () => {
+    const pt = newWorkplace(0);
+    expect(pt.multipliers.saturday).toBe(1.25);
+    expect(pt.multipliers.sunday).toBe(1.25);
+    const casual = applyAward(pt, { employment: 'casual' });
+    expect(casual.multipliers.saturday).toBe(1.5);
+    expect(casual.multipliers.sunday).toBe(1.5);
+  });
+
+  it('Levels 2–3 keep the higher Sunday rate', () => {
+    const l2 = applyAward(newWorkplace(0), { level: 'Level 2' });
+    expect(l2.baseRate).toBe(29.45);
+    expect(l2.multipliers.sunday).toBe(1.5);
+    expect(applyAward(l2, { employment: 'casual' }).multipliers.sunday).toBe(1.75);
+  });
+
+  it('junior rates are a percentage of the adult rate', () => {
+    const wp = applyAward(newWorkplace(0), { age: '17' });
+    expect(wp.baseRate).toBe(16.69); // 60% of $27.81
+    expect(awardMinimumRate({ award: 'general-retail', level: 'Level 1', age: 'under16' })).toBe(12.51); // 45%
+  });
+
+  it('changing award resets level, rate and time bands', () => {
+    const retail = applyAward(newWorkplace(0), { award: 'general-retail', level: 'Level 3' });
+    expect(retail).toMatchObject({ level: 'Level 3', baseRate: 28.89, eveningStart: 18 * 60, nightEnd: 0 });
+  });
+
+  it('custom awards have no minimum and keep the entered rate', () => {
+    const wp = applyAward({ ...newWorkplace(0), baseRate: 31 }, { award: 'custom' });
+    expect(awardMinimumRate(wp)).toBeNull();
+    expect(wp.baseRate).toBe(31);
   });
 });

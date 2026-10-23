@@ -56,6 +56,9 @@ export type Employment = 'parttime' | 'casual' | 'fulltime';
 
 export type AwardId = 'fast-food' | 'general-retail' | 'custom';
 
+/** Age bracket for junior rates; 'adult' is 21 and over */
+export type JuniorAge = 'adult' | 'under16' | '16' | '17' | '18' | '19' | '20';
+
 export interface Workplace {
   id: string;
   name: string;
@@ -64,6 +67,8 @@ export interface Workplace {
   /** Free text for custom awards / enterprise agreements, e.g. "McDonald's EA 2026" */
   awardName?: string;
   level: string;
+  /** Age bracket for junior rates (missing = adult) */
+  age?: JuniorAge;
   employment: Employment;
   /** Ordinary hourly rate before tax */
   baseRate: number;

@@ -1295,3 +1295,27 @@ details.advanced summary {
   background: var(--mint-softer);
   border: 1px solid var(--line);
 }
+
+.award-rate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--mint-soft);
+}
+
+.award-rate a {
+  color: var(--mint-strong);
+  font-weight: 600;
+}
+
+.award-rate .link {
+  padding: 0;
+  color: var(--mint-strong);
+  font-weight: 600;
+}
+
+.field .plain {
+  font-weight: 400;
+}

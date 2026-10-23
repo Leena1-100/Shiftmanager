@@ -57,10 +57,44 @@ export default function CloudSave({ cloud, mode = 'settings', onRestored }: Prop
         </div>
         <p className="small muted">
           Every change is saved automatically to a secret Gist on your GitHub account. If this phone's data is cleared or you switch
-          phones, choose <b>Restore from cloud save</b> on the welcome screen and paste the same token.
+          phones, choose <b>Restore from cloud save</b> on the welcome screen and paste your token. A new token works too, as long
+          as it's from the same GitHub account.
         </p>
+        {cloud.tokenRejected && (
+          <div className="confirm-box">
+            <p className="small">
+              <b>Your token has expired or was removed.</b> Your data is still on GitHub.{' '}
+              <a href={NEW_TOKEN_URL} target="_blank" rel="noreferrer">
+                Create a new token
+              </a>{' '}
+              and paste it here to keep saving.
+            </p>
+            <input
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="ghp_…"
+              aria-label="New GitHub token"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+            />
+            {error && <p className="error">{error}</p>}
+            <button
+              className="primary"
+              disabled={busy || token.trim().length < 20}
+              onClick={() =>
+                run(async () => {
+                  await cloud.updateToken(token.trim());
+                  setToken('');
+                })
+              }
+            >
+              {busy ? 'Checking…' : 'Use new token'}
+            </button>
+          </div>
+        )}
         <div className="inline wrap">
-          {cloud.status === 'error' && (
+          {cloud.status === 'error' && !cloud.tokenRejected && (
             <button className="ghost-btn" onClick={cloud.saveNow}>
               Try again
             </button>
@@ -119,7 +153,8 @@ export default function CloudSave({ cloud, mode = 'settings', onRestored }: Prop
       {mode === 'settings' ? (
         <p className="small muted">
           Keep your shifts safe even if this phone's browser data is cleared. Your data is saved to a secret Gist on your own GitHub
-          account, and only someone with your token can read it.
+          account. A secret Gist doesn't show up in search or on your profile, but anyone you give its link to can open it, so keep the
+          link to yourself.
         </p>
       ) : (
         <p className="small muted">Paste the GitHub token you used for cloud save to bring back your workplaces and shifts.</p>
@@ -133,7 +168,8 @@ export default function CloudSave({ cloud, mode = 'settings', onRestored }: Prop
             (sign in if asked). Only the <b>gist</b> box is ticked.
           </li>
           <li>
-            Set <b>Expiration</b> to <b>No expiration</b>, then tap <b>Generate token</b> at the bottom.
+            Set <b>Expiration</b> (1 year is a good choice), then tap <b>Generate token</b> at the bottom. When it runs out, the app asks
+            for a new one and your data stays where it is.
           </li>
           <li>Copy the token (starts with ghp_) and paste it below. Keep a copy in your notes. You need it to restore.</li>
         </ol>

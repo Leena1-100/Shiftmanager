@@ -15,7 +15,7 @@ A shift and weekly pay tracker for part-time/casual fast food workers in Austral
 - **Tax estimate** — PAYG withholding estimate (2026–27 rates), take-home pay, and how much more you can earn this week before tax kicks in (~$350/week). Working holiday maker (15%) and non-resident modes.
 - **Earnings history** — weekly records, mark pay as received and compare with the actual deposit, monthly totals, financial-year (from 1 July) total vs the $18,200 tax-free threshold.
 - Data stays in the browser (localStorage) with JSON backup/restore.
-- **Cloud save (optional)** — connect a GitHub token with only the `gist` scope (Settings → Cloud save) and every change is saved to a secret Gist on your own account. If the browser data is cleared or you change phones, choose *Restore from cloud save* on the welcome screen and paste the same token. The token is stored only on the device and is never included in the saved data or backup files.
+- **Cloud save (optional)** — connect a GitHub token with only the `gist` scope (Settings → Cloud save) and every change is saved to a secret Gist on your own account (secret Gists are unlisted: hidden from search and your profile, but viewable by anyone who has the link). When the token expires the app asks for a new one; the data stays in the Gist. If the browser data is cleared or you change phones, choose *Restore from cloud save* on the welcome screen and paste the same token. The token is stored only on the device and is never included in the saved data or backup files.
 
 > Default penalty rates, break rules and tax are **estimates** based on common rules. Set your own hourly rate and multipliers from your payslip in Settings first.
 

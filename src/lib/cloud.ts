@@ -2,6 +2,8 @@ import type { AppState } from '../types';
 
 /**
  * Cloud save in a secret GitHub Gist owned by the user.
+ * A secret gist is unlisted, not private: it is hidden from search and the user's profile,
+ * but anyone who has its link can open it.
  * The token and gist id are kept in their own localStorage key, never inside AppState,
  * so they are not included in exported backup files.
  */
@@ -43,7 +45,15 @@ export function saveCloudConfig(cfg: CloudConfig | null): void {
   }
 }
 
-export class CloudError extends Error {}
+export class CloudError extends Error {
+  /** True when GitHub rejected the token (expired, deleted or mistyped) */
+  constructor(
+    message: string,
+    readonly tokenRejected = false,
+  ) {
+    super(message);
+  }
+}
 
 async function gh<T>(token: string, path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
@@ -60,7 +70,9 @@ async function gh<T>(token: string, path: string, init: RequestInit = {}): Promi
   } catch {
     throw new CloudError("Couldn't reach GitHub. Check your internet connection and try again.");
   }
-  if (res.status === 401) throw new CloudError('GitHub rejected the token. Check it was copied in full and has not expired.');
+  if (res.status === 401) {
+    throw new CloudError('GitHub rejected the token. It may have expired or been deleted, or was not copied in full.', true);
+  }
   if (res.status === 403 || res.status === 404) {
     throw new CloudError('This token cannot use Gists. Create a token with the "gist" box ticked.');
   }

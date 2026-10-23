@@ -29,11 +29,15 @@ export interface CloudSync {
   config: CloudConfig | null;
   status: CloudStatus;
   error: string;
+  /** GitHub rejected the saved token (usually expired): ask for a new one */
+  tokenRejected: boolean;
   lastSavedAt?: string;
   /** restoreOnly: only load an existing save, never create one */
   connect: (token: string, opts?: { restoreOnly?: boolean }) => Promise<ConnectResult>;
   resolve: (choice: Extract<ConnectResult, { kind: 'choose' }>, keep: 'cloud' | 'device') => Promise<void>;
   saveNow: () => void;
+  /** Swap in a new token for the same cloud save (after the old one expired) */
+  updateToken: (token: string) => Promise<void>;
   disconnect: () => void;
 }
 
@@ -46,6 +50,7 @@ export function useCloudSync(state: AppState, replaceState: (s: AppState) => voi
   const [config, setConfig] = useState<CloudConfig | null>(loadCloudConfig);
   const [status, setStatus] = useState<CloudStatus>(config ? 'checking' : 'off');
   const [error, setError] = useState('');
+  const [tokenRejected, setTokenRejected] = useState(false);
   const [ready, setReady] = useState(!config);
   const lastUploaded = useRef<string>('');
   const stateRef = useRef(state);
@@ -58,6 +63,7 @@ export function useCloudSync(state: AppState, replaceState: (s: AppState) => voi
 
   const fail = (e: unknown) => {
     setStatus('error');
+    setTokenRejected(e instanceof CloudError && e.tokenRejected);
     setError(e instanceof CloudError ? e.message : 'Cloud save failed. It will try again on your next change.');
   };
 
@@ -95,6 +101,7 @@ export function useCloudSync(state: AppState, replaceState: (s: AppState) => voi
       lastUploaded.current = json;
       updateConfig({ ...cfg, lastSyncedAt: savedAt });
       setError('');
+      setTokenRejected(false);
       setStatus('saved');
     } catch (e) {
       fail(e);
@@ -164,21 +171,35 @@ export function useCloudSync(state: AppState, replaceState: (s: AppState) => voi
     setReady(true);
   };
 
+  const updateToken: CloudSync['updateToken'] = async (token) => {
+    if (!config) return;
+    // Throws (and leaves the old token in place) if the new token can't open this save
+    await pull({ ...config, token });
+    updateConfig({ ...config, token });
+    setTokenRejected(false);
+    setError('');
+    lastUploaded.current = '';
+    await upload();
+  };
+
   const disconnect = () => {
     updateConfig(null);
     lastUploaded.current = '';
     setStatus('off');
     setError('');
+    setTokenRejected(false);
   };
 
   return {
     config,
     status,
     error,
+    tokenRejected,
     lastSavedAt: config?.lastSyncedAt,
     connect,
     resolve,
     saveNow: () => void upload(),
+    updateToken,
     disconnect,
   };
 }

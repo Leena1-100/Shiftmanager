@@ -9,6 +9,7 @@ import {
   applyAward,
   awardMinimumRate,
   bandLabel,
+  laundryPerShift,
 } from '../lib/defaults';
 import { fmtDuration, fmtMoney, fmtTime, parseHHMM } from '../lib/time';
 
@@ -173,23 +174,43 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
         <p className="small muted">For casuals the rate above excludes the 25% loading. The loading is built into the casual penalty rates.</p>
       )}
 
-      <label className="field">
-        <span>Allowance per shift (optional)</span>
-        <div className="money-input">
-          <span>$</span>
-          <input
-            inputMode="decimal"
-            placeholder="0.00"
-            defaultValue={wp.shiftAllowance || ''}
-            onChange={(e) => set({ shiftAllowance: Math.max(0, numOr(e.target.value, 0)) || undefined })}
-          />
-          <span className="muted">/ shift</span>
+      <div className="toggle-row">
+        <div>
+          <b>Laundry allowance</b>
+          <p className="small muted">
+            {preset.laundry
+              ? wp.employment === 'fulltime'
+                ? `${fmtMoney(preset.laundry.perWeekFullTime)} per week for full-time (${fmtMoney(laundryPerShift({ ...wp, laundryAllowance: true }))} a shift over 5 shifts)`
+                : `${fmtMoney(preset.laundry.perShift)} per shift for ${EMPLOYMENT_LABEL[wp.employment].toLowerCase()} · from ${preset.ratesFrom}`
+              : 'Amount per shift from your agreement or payslip'}
+            . For washing your own uniform.
+          </p>
         </div>
-      </label>
-      <p className="small muted">
-        A fixed amount added to every shift, such as a laundry allowance. Check your payslip or Tanda: if each shift pays a little more than
-        hours × rate (e.g. $1.28), enter that here.
-      </p>
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={!!wp.laundryAllowance}
+            onChange={(e) => set({ laundryAllowance: e.target.checked })}
+            aria-label="Laundry allowance"
+          />
+          <span />
+        </label>
+      </div>
+      {wp.laundryAllowance && !preset.laundry && (
+        <label className="field">
+          <span>Laundry allowance per shift</span>
+          <div className="money-input">
+            <span>$</span>
+            <input
+              inputMode="decimal"
+              placeholder="0.00"
+              defaultValue={wp.shiftAllowance || ''}
+              onChange={(e) => set({ shiftAllowance: Math.max(0, numOr(e.target.value, 0)) || undefined })}
+            />
+            <span className="muted">/ shift</span>
+          </div>
+        </label>
+      )}
 
       <details className="advanced">
         <summary>Penalty rates &amp; breaks</summary>

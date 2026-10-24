@@ -48,6 +48,8 @@ export interface AwardPreset {
   levels: AwardLevel[];
   /** When the level rates took effect */
   ratesFrom?: string;
+  /** Laundry allowance for employees who wash their own uniform */
+  laundry?: { perShift: number; perWeekFullTime: number };
   /** Junior rate as a percentage of the adult rate */
   juniorPercent?: Record<Exclude<JuniorAge, 'adult'>, number>;
   multipliers: (level: string, employment: Employment) => Multipliers;
@@ -80,6 +82,8 @@ export const AWARDS: Record<AwardId, AwardPreset> = {
       { name: 'Level 3 (in charge of 2 or more people)', rate: 30.27 },
     ],
     ratesFrom: '1 July 2026',
+    // Part-time/casual $1.28 per shift, full-time $6.42 per week (from 1 July 2026)
+    laundry: { perShift: 1.28, perWeekFullTime: 6.42 },
     juniorPercent: { under16: 40, '16': 50, '17': 60, '18': 70, '19': 80, '20': 90 },
     multipliers: (level, employment) => {
       const level1 = level === 'Level 1';
@@ -108,6 +112,8 @@ export const AWARDS: Record<AwardId, AwardPreset> = {
       { name: 'Level 8', rate: 33.99 },
     ],
     ratesFrom: '1 July 2026',
+    // Part-time/casual $1.28 per shift, full-time $6.42 per week (from 1 July 2026)
+    laundry: { perShift: 1.28, perWeekFullTime: 6.42 },
     juniorPercent: { under16: 45, '16': 50, '17': 60, '18': 70, '19': 80, '20': 90 },
     multipliers: (_level, employment) =>
       employment === 'casual'
@@ -230,4 +236,15 @@ export function bandLabel(band: Band, wp: Pick<Workplace, 'eveningStart' | 'nigh
   if (band === 'evening') return `${BAND_LABEL.evening} (${fmtClock12(wp.eveningStart)}–12am)`;
   if (band === 'night') return `${BAND_LABEL.night} (12am–${fmtClock12(wp.nightEnd)})`;
   return BAND_LABEL[band];
+}
+
+/**
+ * Laundry allowance added to each worked shift. Full-time is paid per week, so it is spread
+ * over a five-shift week. Awards without a preset use the amount the user entered.
+ */
+export function laundryPerShift(wp: Workplace): number {
+  if (!wp.laundryAllowance) return 0;
+  const preset = AWARDS[wp.award].laundry;
+  if (!preset) return wp.shiftAllowance ?? 0;
+  return wp.employment === 'fulltime' ? Math.round((preset.perWeekFullTime / 5) * 100) / 100 : preset.perShift;
 }

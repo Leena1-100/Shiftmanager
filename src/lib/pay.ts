@@ -1,5 +1,6 @@
 import type { Band, BreakTier, Shift, Workplace } from '../types';
 import { addDays, dayOfWeek } from './time';
+import { laundryPerShift } from './defaults';
 
 export interface BreakAllowance {
   paidCount: number;
@@ -121,7 +122,7 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
   }
   // Swap the exact-minute value of missed breaks for Tanda's rounded-hours value
   pay += missedPay - (missedBreakMinutes * wp.baseRate * wp.multipliers[missedBand]) / 60;
-  const allowance = span > 0 ? (wp.shiftAllowance ?? 0) : 0;
+  const allowance = span > 0 ? laundryPerShift(wp) : 0;
   pay += allowance;
   // Once a shift is worked, Tanda's own dollar figure is what gets paid
   const fromTanda = useActual && !!shift.tandaPay;

@@ -93,7 +93,9 @@ export interface Workplace {
   nightEnd: number;
   breakTiers: BreakTier[];
   minEngagementMinutes: number;
-  /** Flat amount paid per worked shift, e.g. a laundry allowance ($) */
+  /** Paid a laundry allowance (amount comes from the award and employment type) */
+  laundryAllowance?: boolean;
+  /** Laundry allowance per shift for awards without a preset amount ($) */
   shiftAllowance?: number;
 }
 

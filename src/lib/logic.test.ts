@@ -380,7 +380,7 @@ describe('missed paid breaks', () => {
 
 describe('matching Tanda pay from hours, missed breaks and allowance', () => {
   // Level 1 adult $27.81 with a $1.28 per-shift allowance, checked against four real Tanda shifts
-  const wp = { ...newWorkplace(0), id: 'w', shiftAllowance: 1.28 };
+  const wp = { ...newWorkplace(0), id: 'w', laundryAllowance: true };
   const worked = (date: string, start: number, end: number, paidBreak: number, unpaidBreak: number): Shift => ({
     id: date,
     date,
@@ -423,5 +423,24 @@ describe('saved workplaces', () => {
     const wp = { ...newWorkplace(0), breakTiers: LEGACY_BREAK_TIERS.map((t) => ({ ...t })) };
     const st = reviveState({ version: 2, onboarded: true, workplaces: [wp], settings: {}, shifts: [], weeks: {} });
     expect(st.workplaces[0].breakTiers).toEqual(DEFAULT_BREAK_TIERS);
+  });
+});
+
+describe('laundry allowance', () => {
+  const shift: Shift = { id: 's', date: '2026-10-27', start: hm(9), end: hm(15), source: 'manual', sources: ['manual'] };
+  it('part-time and casual get $1.28 per shift when switched on', () => {
+    const wp = newWorkplace(0);
+    expect(calcShift(shift, wp).allowance).toBe(0);
+    expect(calcShift(shift, { ...wp, laundryAllowance: true }).allowance).toBe(1.28);
+    expect(calcShift(shift, { ...applyAward(wp, { employment: 'casual' }), laundryAllowance: true }).allowance).toBe(1.28);
+  });
+  it('full-time weekly amount is spread over five shifts', () => {
+    const wp = { ...applyAward(newWorkplace(0), { employment: 'fulltime' }), laundryAllowance: true };
+    expect(calcShift(shift, wp).allowance).toBe(1.28); // $6.42 / 5
+  });
+  it('a typed-in allowance from the previous version becomes the switch', () => {
+    const wp = { ...newWorkplace(0), shiftAllowance: 1.28 };
+    const st = reviveState({ version: 2, onboarded: true, workplaces: [wp], settings: {}, shifts: [], weeks: {} });
+    expect(st.workplaces[0]).toMatchObject({ laundryAllowance: true, shiftAllowance: undefined });
   });
 });

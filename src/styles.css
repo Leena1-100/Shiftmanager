@@ -1642,3 +1642,18 @@ a.link {
 .grow {
   flex: 1 1 200px;
 }
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--mint-softer);
+  border: 1px solid var(--line);
+}
+
+.toggle-row p {
+  margin-top: 2px;
+}

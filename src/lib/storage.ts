@@ -44,6 +44,12 @@ export function reviveState(data: unknown): AppState {
   workplaces = workplaces.map((w) =>
     JSON.stringify(w.breakTiers) === legacy ? { ...w, breakTiers: AWARDS[w.award].breakTiers.map((t) => ({ ...t })) } : w,
   );
+  // An allowance typed in by hand on a preset award becomes the laundry switch
+  workplaces = workplaces.map((w) =>
+    w.award !== 'custom' && w.shiftAllowance && w.laundryAllowance === undefined
+      ? { ...w, laundryAllowance: true, shiftAllowance: undefined }
+      : w,
+  );
   const fallbackId = workplaces[0]?.id;
   return {
     version: 2,

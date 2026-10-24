@@ -14,6 +14,8 @@ export interface TandaPay {
   pay: number;
   /** Paid break minutes Tanda had recorded when this pay was read */
   paidBreak?: number;
+  /** Unpaid (meal) break minutes Tanda had recorded when this pay was read */
+  unpaidBreak?: number;
 }
 
 /** A version of the shift from another source that is not currently applied */
@@ -91,6 +93,8 @@ export interface Workplace {
   nightEnd: number;
   breakTiers: BreakTier[];
   minEngagementMinutes: number;
+  /** Flat amount paid per worked shift, e.g. a laundry allowance ($) */
+  shiftAllowance?: number;
 }
 
 /** Personal settings shared by all workplaces */

@@ -179,7 +179,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, o
                 </label>
               </div>
               <div className="inline wrap">
-                <p className="small muted grow">Too busy for your paid break? Set it to 0 and the missed minutes are paid as extra work, like Tanda does.</p>
+                <p className="small muted grow">Missed a break? Set it to 0 and the missed time is paid on top, like Tanda: 10 min for a paid break, 30 min for a meal break.</p>
                 {aPaid !== '0' && (
                   <button type="button" className="ghost-btn" onClick={() => setAPaid('0')}>
                     Missed paid break
@@ -189,7 +189,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, o
               {effCalc && planCalc && (
                 <p className="calc-line">
                   Actual {fmtDuration(effCalc.workedMinutes)}
-                  {effCalc.missedPaidBreak > 0 && ` (incl. ${effCalc.missedPaidBreak}m missed paid break)`} · <b>{fmtMoney(effCalc.pay)}</b>
+                  {effCalc.missedBreakMinutes > 0 && ` + ${effCalc.missedBreakMinutes}m missed break`} · <b>{fmtMoney(effCalc.pay)}</b>
                   {effCalc.pay !== planCalc.pay && (
                     <span className={effCalc.pay > planCalc.pay ? 'up' : 'down'}>
                       {' '}

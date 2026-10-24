@@ -48,8 +48,10 @@ export interface ShiftCalc {
   workedMinutes: number;
   /** Minutes added to meet the minimum engagement */
   topUpMinutes: number;
-  /** Paid break minutes that were skipped and are paid as extra work time */
-  missedPaidBreak: number;
+  /** Break minutes that were skipped and are paid as extra time on top of the hours worked */
+  missedBreakMinutes: number;
+  /** Flat per-shift allowance included in pay */
+  allowance: number;
   minutesByBand: Partial<Record<Band, number>>;
   pay: number;
   usedActual: boolean;
@@ -88,16 +90,23 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
     const b = bandAt(shift.date, t, ph, wp);
     minutesByBand[b] = (minutesByBand[b] ?? 0) + 1;
   }
-  // A paid break that wasn't taken is paid as extra work time (as Tanda does).
-  // For Tanda shifts the baseline is what Tanda recorded; otherwise the award entitlement.
-  let missedPaidBreak = 0;
+  // Breaks that weren't taken are paid as extra time on top of the hours worked, as Tanda does:
+  // a skipped paid rest break pays its minutes, a skipped meal break pays the meal break length.
+  // For Tanda shifts the baseline is what Tanda had recorded (its pay already covers that);
+  // otherwise it is the award entitlement for the shift length.
+  let missedBreakMinutes = 0;
   if (useActual) {
-    const baseline = shift.tandaPay ? (shift.tandaPay.paidBreak ?? rule.paidMinutes) : rule.paidMinutes;
-    missedPaidBreak = Math.max(0, baseline - shift.actual!.paidBreak);
+    const a = shift.actual!;
+    const paidBase = shift.tandaPay ? (shift.tandaPay.paidBreak ?? rule.paidMinutes) : rule.paidMinutes;
+    const mealBase = shift.tandaPay ? (shift.tandaPay.unpaidBreak ?? 0) : rule.unpaidMinutes;
+    missedBreakMinutes += Math.max(0, paidBase - a.paidBreak);
+    if (mealBase > 0 && a.unpaidBreak === 0) missedBreakMinutes += mealBase;
   }
   const missedBand = bandAt(shift.date, Math.max(start, end - 1), ph, wp);
-  if (missedPaidBreak > 0) minutesByBand[missedBand] = (minutesByBand[missedBand] ?? 0) + missedPaidBreak;
-  const workedMinutes = span - unpaidBreak + missedPaidBreak;
+  // Tanda pays missed breaks in hours rounded to 2 decimals (10 min = 0.17 h)
+  const missedPay = ((Math.round((missedBreakMinutes / 60) * 100) / 100) * wp.baseRate * wp.multipliers[missedBand]);
+  if (missedBreakMinutes > 0) minutesByBand[missedBand] = (minutesByBand[missedBand] ?? 0) + missedBreakMinutes;
+  const workedMinutes = span - unpaidBreak;
 
   let topUpMinutes = 0;
   if (wp.minEngagementMinutes > 0 && workedMinutes > 0 && workedMinutes < wp.minEngagementMinutes) {
@@ -110,11 +119,14 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
   for (const [band, mins] of Object.entries(minutesByBand) as [Band, number][]) {
     pay += (mins * wp.baseRate * wp.multipliers[band]) / 60;
   }
+  // Swap the exact-minute value of missed breaks for Tanda's rounded-hours value
+  pay += missedPay - (missedBreakMinutes * wp.baseRate * wp.multipliers[missedBand]) / 60;
+  const allowance = span > 0 ? (wp.shiftAllowance ?? 0) : 0;
+  pay += allowance;
   // Once a shift is worked, Tanda's own dollar figure is what gets paid
   const fromTanda = useActual && !!shift.tandaPay;
-  if (fromTanda) {
-    pay = shift.tandaPay!.pay + (missedPaidBreak * wp.baseRate * wp.multipliers[missedBand]) / 60;
-  }
+  // Tanda's figure already includes allowances; only breaks missed since then are added
+  if (fromTanda) pay = shift.tandaPay!.pay + missedPay;
 
   return {
     start,
@@ -125,7 +137,8 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
     paidCount: useActual ? (paidBreak > 0 ? Math.max(1, Math.round(paidBreak / 10)) : 0) : rule.paidCount,
     workedMinutes,
     topUpMinutes,
-    missedPaidBreak,
+    missedBreakMinutes,
+    allowance: fromTanda ? 0 : allowance,
     minutesByBand,
     pay: round2(pay),
     usedActual: useActual,

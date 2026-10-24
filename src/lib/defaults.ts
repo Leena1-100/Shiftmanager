@@ -2,13 +2,33 @@ import type { AwardId, Band, BreakTier, Employment, JuniorAge, Multipliers, Sett
 import { fmtClock12 } from './time';
 
 /**
- * Default Fast Food Award break entitlements
+ * Fast Food Award break entitlements (matches how Tanda applies them)
+ * - 4h or more: one paid 10-min rest break
+ * - Over 5h: one paid 10-min break + 30-min unpaid meal break
+ * - Over 9h: two paid 10-min breaks + 30-min unpaid meal break
+ */
+export const FAST_FOOD_BREAK_TIERS: BreakTier[] = [
+  { minMinutes: 240, paidCount: 1, paidLength: 10, unpaidMinutes: 0 },
+  { minMinutes: 301, paidCount: 1, paidLength: 10, unpaidMinutes: 30 },
+  { minMinutes: 541, paidCount: 2, paidLength: 10, unpaidMinutes: 30 },
+];
+
+/**
+ * General Retail Award break entitlements
  * - 4h or more: one paid 10-min rest break
  * - Over 5h: one paid 10-min break + 30-min unpaid meal break
  * - Over 7h: two paid 10-min breaks + 30-min unpaid meal break
- * - Over 9h: two paid 10-min breaks + 60 min unpaid meal breaks
+ * - Over 10h: two paid 10-min breaks + two 30-min unpaid meal breaks
  */
-export const DEFAULT_BREAK_TIERS: BreakTier[] = [
+export const RETAIL_BREAK_TIERS: BreakTier[] = [
+  { minMinutes: 240, paidCount: 1, paidLength: 10, unpaidMinutes: 0 },
+  { minMinutes: 301, paidCount: 1, paidLength: 10, unpaidMinutes: 30 },
+  { minMinutes: 421, paidCount: 2, paidLength: 10, unpaidMinutes: 30 },
+  { minMinutes: 601, paidCount: 2, paidLength: 10, unpaidMinutes: 60 },
+];
+
+/** Break tiers earlier versions used for every award; kept to recognise and upgrade saved workplaces */
+export const LEGACY_BREAK_TIERS: BreakTier[] = [
   { minMinutes: 240, paidCount: 1, paidLength: 10, unpaidMinutes: 0 },
   { minMinutes: 301, paidCount: 1, paidLength: 10, unpaidMinutes: 30 },
   { minMinutes: 421, paidCount: 2, paidLength: 10, unpaidMinutes: 30 },
@@ -69,7 +89,7 @@ export const AWARDS: Record<AwardId, AwardPreset> = {
     },
     eveningStart: 22 * 60,
     nightEnd: 6 * 60,
-    breakTiers: DEFAULT_BREAK_TIERS,
+    breakTiers: FAST_FOOD_BREAK_TIERS,
   },
   // General Retail Industry Award 2020: Mon–Fri after 6pm 125%, Saturday 125%, Sunday 150%,
   // public holiday 225% (casual: 150%, 150%, 175%, 250%). No separate overnight band.
@@ -95,7 +115,7 @@ export const AWARDS: Record<AwardId, AwardPreset> = {
         : { weekday: 1, evening: 1.25, night: 1.25, saturday: 1.25, sunday: 1.5, publicHoliday: 2.25 },
     eveningStart: 18 * 60,
     nightEnd: 0,
-    breakTiers: DEFAULT_BREAK_TIERS,
+    breakTiers: RETAIL_BREAK_TIERS,
   },
   custom: {
     id: 'custom',
@@ -104,7 +124,7 @@ export const AWARDS: Record<AwardId, AwardPreset> = {
     multipliers: (_level, employment) => (employment === 'casual' ? { ...flat(1.25) } : flat(1)),
     eveningStart: 22 * 60,
     nightEnd: 6 * 60,
-    breakTiers: DEFAULT_BREAK_TIERS,
+    breakTiers: FAST_FOOD_BREAK_TIERS,
   },
 };
 

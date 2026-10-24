@@ -163,7 +163,7 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
                       const adj = part.gross - byRate;
                       return Math.abs(adj) >= 0.01 ? (
                         <li>
-                          <span>Adjusted to Tanda pay</span>
+                          <span>Allowances &amp; Tanda adjustments</span>
                           <span />
                           <b>
                             {adj > 0 ? '+' : '-'}
@@ -254,7 +254,7 @@ function ShiftCard({
                 {eff.workedMinutes - plan.workedMinutes}m)
               </span>
             )}
-            {eff.missedPaidBreak > 0 && <span className="missed"> · Missed paid break +{eff.missedPaidBreak}m paid</span>}
+            {eff.missedBreakMinutes > 0 && <span className="missed"> · Missed break +{eff.missedBreakMinutes}m paid</span>}
           </div>
         ) : (
           <div className="shift-todo">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AppState, Workplace } from '../types';
-import { DEFAULT_SETTINGS, newWorkplace } from './defaults';
+import { AWARDS, DEFAULT_SETTINGS, LEGACY_BREAK_TIERS, newWorkplace } from './defaults';
 
 const KEY = 'shiftmoney:v1';
 
@@ -39,6 +39,11 @@ export function reviveState(data: unknown): AppState {
   const base = emptyState();
   let workplaces = Array.isArray(d.workplaces) ? d.workplaces : [];
   if (d.version === 1 && d.settings) workplaces = [migrateV1Workplace(d.settings as unknown as Record<string, unknown>)];
+  // Workplaces still on the old one-size-fits-all break rules get their award's rules
+  const legacy = JSON.stringify(LEGACY_BREAK_TIERS);
+  workplaces = workplaces.map((w) =>
+    JSON.stringify(w.breakTiers) === legacy ? { ...w, breakTiers: AWARDS[w.award].breakTiers.map((t) => ({ ...t })) } : w,
+  );
   const fallbackId = workplaces[0]?.id;
   return {
     version: 2,

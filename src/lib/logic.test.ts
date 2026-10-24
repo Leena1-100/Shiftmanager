@@ -3,7 +3,7 @@ import { parseShifts } from './parser';
 import { calcShift, breaksFor, summarize, taxableGross } from './pay';
 import { mergeShifts, swapAlt } from './merge';
 import { weeklyWithholding, annualTax } from './tax';
-import { DEFAULT_BREAK_TIERS, applyAward, awardMinimumRate, newWorkplace } from './defaults';
+import { FAST_FOOD_BREAK_TIERS as DEFAULT_BREAK_TIERS, LEGACY_BREAK_TIERS, applyAward, awardMinimumRate, newWorkplace } from './defaults';
 import { reviveState } from './storage';
 import type { Shift } from '../types';
 
@@ -65,7 +65,8 @@ describe('breaks & pay', () => {
     expect(breaksFor(hm(4), DEFAULT_BREAK_TIERS).paidMinutes).toBe(10);
     expect(breaksFor(hm(5), DEFAULT_BREAK_TIERS).unpaidMinutes).toBe(0);
     expect(breaksFor(hm(5, 1), DEFAULT_BREAK_TIERS).unpaidMinutes).toBe(30);
-    expect(breaksFor(hm(8), DEFAULT_BREAK_TIERS).paidMinutes).toBe(20);
+    expect(breaksFor(hm(8, 40), DEFAULT_BREAK_TIERS).paidMinutes).toBe(10);
+    expect(breaksFor(hm(9, 1), DEFAULT_BREAK_TIERS).paidMinutes).toBe(20);
   });
 
   const base: Shift = { id: 'x', date: '2026-10-27', start: hm(9), end: hm(15), source: 'tanda', sources: ['tanda'] };
@@ -240,21 +241,21 @@ describe('Tanda screenshots', () => {
         start: hm(7, 20),
         end: hm(16),
         actual: { start: hm(7, 18), end: hm(16), unpaidBreak: 30, paidBreak: 10 },
-        tandaPay: { hours: 8.2, pay: 229.32, paidBreak: 10 },
+        tandaPay: { hours: 8.2, pay: 229.32, paidBreak: 10, unpaidBreak: 30 },
       },
       {
         date: '2026-10-21',
         start: hm(10, 30),
         end: hm(16),
         actual: { start: hm(10, 30), end: hm(16, 3), unpaidBreak: 0, paidBreak: 10 },
-        tandaPay: { hours: 5.55, pay: 169.53, paidBreak: 10 },
+        tandaPay: { hours: 5.55, pay: 169.53, paidBreak: 10, unpaidBreak: 0 },
       },
       {
         date: '2026-10-22',
         start: hm(7, 20),
         end: hm(16),
         actual: { start: hm(7, 30), end: hm(16, 6), unpaidBreak: 31, paidBreak: 10 },
-        tandaPay: { hours: 8.08, pay: 226.08, paidBreak: 10 },
+        tandaPay: { hours: 8.08, pay: 226.08, paidBreak: 10, unpaidBreak: 31 },
       },
     ]);
   });
@@ -337,16 +338,22 @@ describe('missed paid breaks', () => {
     sources: ['tanda'],
     workplaceId: 'w',
     actual: { start: hm(7, 18), end: hm(16), unpaidBreak: 30, paidBreak: 10 },
-    tandaPay: { hours: 8.2, pay: 229.32, paidBreak: 10 },
+    tandaPay: { hours: 8.2, pay: 229.32, paidBreak: 10, unpaidBreak: 30 },
   };
 
   it('a Tanda shift as recorded keeps Tanda pay', () => {
-    expect(calcShift(tandaShift, wp)).toMatchObject({ pay: 229.32, missedPaidBreak: 0, workedMinutes: 492 });
+    expect(calcShift(tandaShift, wp)).toMatchObject({ pay: 229.32, missedBreakMinutes: 0, workedMinutes: 492 });
   });
 
-  it('setting the paid break to 0 adds 10 paid minutes on top of Tanda pay', () => {
+  it('setting the paid break to 0 adds 0.17h on top of Tanda pay', () => {
     const missed = { ...tandaShift, actual: { ...tandaShift.actual!, paidBreak: 0 } };
-    expect(calcShift(missed, wp)).toMatchObject({ pay: 234.32, missedPaidBreak: 10, workedMinutes: 502 });
+    expect(calcShift(missed, wp)).toMatchObject({ pay: 234.42, missedBreakMinutes: 10, workedMinutes: 492 });
+  });
+
+  it('setting the meal break to 0 adds 30 minutes on top of Tanda pay', () => {
+    const missed = { ...tandaShift, actual: { ...tandaShift.actual!, unpaidBreak: 0 } };
+    // 30 more minutes worked are not double counted: Tanda pay stays the base, plus 0.5h
+    expect(calcShift(missed, wp)).toMatchObject({ pay: 244.32, missedBreakMinutes: 30 });
   });
 
   it('after Tanda itself records the missed break, nothing is added twice', () => {
@@ -355,7 +362,7 @@ describe('missed paid breaks', () => {
       actual: { ...tandaShift.actual!, paidBreak: 0 },
       tandaPay: { hours: 8.37, pay: 234.32, paidBreak: 0 },
     };
-    expect(calcShift(reimported, wp)).toMatchObject({ pay: 234.32, missedPaidBreak: 0 });
+    expect(calcShift(reimported, wp)).toMatchObject({ pay: 234.32, missedBreakMinutes: 0 });
   });
 
   it('calculated shifts add missed paid break minutes too', () => {
@@ -366,7 +373,55 @@ describe('missed paid breaks', () => {
       tandaPay: undefined,
       actual: { start: hm(9), end: hm(15), unpaidBreak: 30, paidBreak: 0 },
     };
-    // 5h30m worked + 10m missed paid break at $30
-    expect(calcShift(msg, wp)).toMatchObject({ missedPaidBreak: 10, workedMinutes: 340, pay: 170 });
+    // 5h30m worked + 0.17h missed paid break at $30
+    expect(calcShift(msg, wp)).toMatchObject({ missedBreakMinutes: 10, workedMinutes: 330, pay: 170.1 });
+  });
+});
+
+describe('matching Tanda pay from hours, missed breaks and allowance', () => {
+  // Level 1 adult $27.81 with a $1.28 per-shift allowance, checked against four real Tanda shifts
+  const wp = { ...newWorkplace(0), id: 'w', shiftAllowance: 1.28 };
+  const worked = (date: string, start: number, end: number, paidBreak: number, unpaidBreak: number): Shift => ({
+    id: date,
+    date,
+    start,
+    end,
+    source: 'message',
+    sources: ['message'],
+    workplaceId: 'w',
+    actual: { start, end, paidBreak, unpaidBreak },
+  });
+
+  it.each([
+    ['Mon', worked('2026-10-19', hm(7, 18), hm(16), 10, 30), 229.32],
+    ['Wed (no meal break)', worked('2026-10-21', hm(10, 30), hm(16, 3), 10, 0), 169.53],
+    ['Thu', worked('2026-10-22', hm(7, 30), hm(16, 6), 10, 31), 226.08],
+    ['Fri (no paid break)', worked('2026-10-23', hm(10, 30), hm(16, 15), 0, 30), 152.01],
+  ])('%s', (_day, shift, tandaPay) => {
+    expect(calcShift(shift, wp).pay).toBe(tandaPay);
+  });
+
+  it('reads a "Not rostered" Tanda day', () => {
+    const [s] = parseShifts(
+      'Fri, 23 Oct 5.25 hrs | $152.01\n10:30 - 16:15\nFOH @ Queens Plaza\nRostered / worked details\nWorked: 10:30 - 16:15\nRostered: Not rostered\nBreaks: 30m unpaid',
+      'tanda',
+      '2026-10-19',
+    );
+    expect(s).toMatchObject({
+      date: '2026-10-23',
+      start: hm(10, 30),
+      end: hm(16, 15),
+      actual: { start: hm(10, 30), end: hm(16, 15), paidBreak: 0, unpaidBreak: 30 },
+      tandaPay: { hours: 5.25, pay: 152.01 },
+    });
+    expect(calcShift({ ...s, id: 'f', sources: ['tanda'], workplaceId: 'w' }, wp).pay).toBe(152.01);
+  });
+});
+
+describe('saved workplaces', () => {
+  it('old break rules are upgraded to the award rules', () => {
+    const wp = { ...newWorkplace(0), breakTiers: LEGACY_BREAK_TIERS.map((t) => ({ ...t })) };
+    const st = reviveState({ version: 2, onboarded: true, workplaces: [wp], settings: {}, shifts: [], weeks: {} });
+    expect(st.workplaces[0].breakTiers).toEqual(DEFAULT_BREAK_TIERS);
   });
 });

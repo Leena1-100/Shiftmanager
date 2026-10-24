@@ -1,11 +1,24 @@
 import { useState } from 'react';
-import type { Band, Settings, Shift, Source, Workplace } from '../types';
+import type { Settings, Shift, Source, Workplace } from '../types';
 import { calcShift, isUntaxed, summarize, taxableGross, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { taxFreeRoom, weeklyWithholding, WEEKLY_TAX_FREE } from '../lib/tax';
-import { bandLabel } from '../lib/defaults';
 import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
 import { PlusIcon, SwapIcon, ClockIcon, CheckIcon } from './Icons';
+
+type DayType = 'weekday' | 'saturday' | 'sunday' | 'publicHoliday';
+const DAY_TYPES: DayType[] = ['weekday', 'saturday', 'sunday', 'publicHoliday'];
+const DAY_TYPE_LABEL: Record<DayType, string> = {
+  weekday: 'Weekdays',
+  saturday: 'Saturday',
+  sunday: 'Sunday',
+  publicHoliday: 'Public holiday',
+};
+function dayType(shift: Shift): DayType {
+  if (shift.publicHoliday) return 'publicHoliday';
+  const d = dayOfWeek(shift.date);
+  return d === 6 ? 'saturday' : d === 0 ? 'sunday' : 'weekday';
+}
 
 export const SOURCE_LABEL: Record<Source, string> = { tanda: 'Tanda', message: 'Message', manual: 'Manual' };
 
@@ -165,11 +178,25 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
 
       {sum.gross > 0 && (
         <section className="card">
-          <div className="card-title">Pay by rate</div>
+          <div className="card-title">Pay by day</div>
           {workplaces
             .filter((wp) => sum.byWorkplace[wp.id])
             .map((wp) => {
               const part = sum.byWorkplace[wp.id];
+              // Each shift's full pay (incl. laundry, missed breaks, Tanda's figure) goes under its day type,
+              // so the weekday line can be compared with Tanda's weekday total directly
+              const groups = new Map<DayType, { shifts: number; worked: number; minutes: number; pay: number }>();
+              for (const sh of shifts) {
+                if (workplaceFor(sh, workplaces)?.id !== wp.id) continue;
+                const c = calcShift(sh, wp, mode);
+                const key = dayType(sh);
+                const g = groups.get(key) ?? { shifts: 0, worked: 0, minutes: 0, pay: 0 };
+                g.shifts++;
+                if (c.usedActual) g.worked++;
+                g.minutes += c.workedMinutes;
+                g.pay += c.pay;
+                groups.set(key, g);
+              }
               return (
                 <div key={wp.id} className="stack-sm">
                   {multiWp && (
@@ -181,38 +208,28 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
                     </div>
                   )}
                   <ul className="breakdown">
-                    {(Object.entries(part.minutesByBand) as [Band, number][]).map(([band, mins]) => (
-                      <li key={band}>
-                        <span>
-                          {bandLabel(band, wp)} <span className="muted">×{wp.multipliers[band]}</span>
-                        </span>
-                        <span>{fmtDuration(mins)}</span>
-                        <b>{fmtMoney((mins * wp.baseRate * wp.multipliers[band]) / 60)}</b>
-                      </li>
-                    ))}
-                    {(() => {
-                      // Worked shifts use Tanda's dollars, which can differ a little from the rate maths
-                      const byRate = (Object.entries(part.minutesByBand) as [Band, number][]).reduce(
-                        (acc, [band, mins]) => acc + (mins * wp.baseRate * wp.multipliers[band]) / 60,
-                        0,
-                      );
-                      const adj = part.gross - byRate;
-                      return Math.abs(adj) >= 0.01 ? (
-                        <li>
-                          <span>Allowances &amp; Tanda adjustments</span>
-                          <span />
-                          <b>
-                            {adj > 0 ? '+' : '-'}
-                            {fmtMoney(Math.abs(adj))}
-                          </b>
+                    {DAY_TYPES.filter((d) => groups.has(d)).map((d) => {
+                      const g = groups.get(d)!;
+                      return (
+                        <li key={d}>
+                          <span>
+                            {DAY_TYPE_LABEL[d]}{' '}
+                            <span className="muted">
+                              ×{wp.multipliers[d]} · {g.shifts} shift{g.shifts === 1 ? '' : 's'}
+                              {g.worked < g.shifts && ` (${g.shifts - g.worked} rostered)`}
+                            </span>
+                          </span>
+                          <span>{+(g.minutes / 60).toFixed(2)} hrs</span>
+                          <b>{fmtMoney(g.pay)}</b>
                         </li>
-                      ) : null;
-                    })()}
+                      );
+                    })}
                   </ul>
                   <p className="small muted">
                     {multiWp ? '' : `${wp.name} · `}
                     {wp.level ? `${wp.level} · ` : ''}
-                    {fmtMoney(wp.baseRate)}/h
+                    {fmtMoney(wp.baseRate)}/h. Totals include laundry and missed breaks, and use Tanda's amount for Tanda shifts. Tap a shift
+                    to see its full working.
                   </p>
                 </div>
               );

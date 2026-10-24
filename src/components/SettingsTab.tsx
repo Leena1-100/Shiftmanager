@@ -167,6 +167,8 @@ export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDelete
         )}
       </section>
 
+      <p className="small muted version">ShiftMoney version {__BUILD_ID__}</p>
+
       {editing && (
         <div className="sheet-backdrop" onClick={() => setEditing(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">

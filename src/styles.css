@@ -1732,3 +1732,8 @@ a.link {
 .small.mismatch {
   color: #c77712;
 }
+
+.version {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

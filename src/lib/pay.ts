@@ -167,6 +167,10 @@ export interface PaySummary {
   actualCount: number;
   /** Pay from shifts that came only from a pasted message roster: no tax or super is taken from it */
   untaxedGross: number;
+  /** Shifts already worked (actual times logged or Tanda timesheet): comparable with Tanda's week total */
+  workedShifts: number;
+  workedGross: number;
+  workedPaidMinutes: number;
 }
 
 export interface WeekSummary extends PaySummary {
@@ -183,6 +187,9 @@ const emptySummary = (): PaySummary => ({
   minutesByBand: {},
   actualCount: 0,
   untaxedGross: 0,
+  workedShifts: 0,
+  workedGross: 0,
+  workedPaidMinutes: 0,
 });
 
 /** Shifts known only from a pasted message (never confirmed by Tanda) */
@@ -219,7 +226,12 @@ export function summarize(shifts: Shift[], workplaces: Workplace[], mode: 'plann
       s.paidBreak += c.paidBreak;
       s.gross += c.pay;
       if (isUntaxed(sh)) s.untaxedGross += c.pay;
-      if (c.usedActual) s.actualCount++;
+      if (c.usedActual) {
+        s.actualCount++;
+        s.workedShifts++;
+        s.workedGross += c.pay;
+        s.workedPaidMinutes += c.workedMinutes;
+      }
       for (const [b, m] of Object.entries(c.minutesByBand) as [Band, number][]) {
         s.minutesByBand[b] = (s.minutesByBand[b] ?? 0) + m;
       }
@@ -228,6 +240,7 @@ export function summarize(shifts: Shift[], workplaces: Workplace[], mode: 'plann
   for (const s of [total, ...Object.values(total.byWorkplace)]) {
     s.gross = round2(s.gross);
     s.untaxedGross = round2(s.untaxedGross);
+    s.workedGross = round2(s.workedGross);
   }
   return total;
 }

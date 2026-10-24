@@ -1737,3 +1737,39 @@ a.link {
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+.hero-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hero-split > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.hero-split span,
+.hero-split small {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.hero-split b {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dup-warning {
+  font-size: 13px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--msg-soft);
+  color: #a85a12;
+  font-weight: 600;
+}

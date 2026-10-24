@@ -444,3 +444,26 @@ describe('laundry allowance', () => {
     expect(st.workplaces[0]).toMatchObject({ laundryAllowance: true, shiftAllowance: undefined });
   });
 });
+
+describe('week totals comparable with Tanda', () => {
+  it('worked shifts add up to Tanda\'s week total, rostered shifts are separate', () => {
+    const wp = { ...newWorkplace(0), id: 'w' };
+    const tanda = (date: string, pay: number, hours: number, start: number, end: number, paid: number, unpaid: number): Shift => ({
+      id: date, date, start, end, source: 'tanda', sources: ['tanda'], workplaceId: 'w',
+      actual: { start, end, paidBreak: paid, unpaidBreak: unpaid },
+      tandaPay: { hours, pay, paidBreak: paid, unpaidBreak: unpaid },
+    });
+    const shifts: Shift[] = [
+      tanda('2026-10-19', 229.32, 8.2, hm(7, 18), hm(16), 10, 30),
+      tanda('2026-10-21', 169.53, 5.55, hm(10, 30), hm(16, 3), 10, 0),
+      tanda('2026-10-22', 226.08, 8.08, hm(7, 30), hm(16, 6), 10, 31),
+      tanda('2026-10-23', 152.01, 5.25, hm(10, 30), hm(16, 15), 0, 30),
+      { id: 'sat', date: '2026-10-24', start: hm(10, 30), end: hm(16), source: 'message', sources: ['message'], workplaceId: 'w' },
+    ];
+    const s = summarize(shifts, [wp], 'effective');
+    expect(s.workedGross).toBe(776.94);
+    expect(+(s.workedPaidMinutes / 60).toFixed(2)).toBe(27.08);
+    expect(s.workedShifts).toBe(4);
+    expect(s.gross).toBeGreaterThan(776.94);
+  });
+});

@@ -60,6 +60,24 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
             <b>{fmtMoney(net)}</b>
           </div>
         </div>
+        {mode === 'effective' && sum.shifts > 0 && (
+          <div className="hero-split">
+            <div>
+              <span>Worked so far</span>
+              <b>{fmtMoney(sum.workedGross)}</b>
+              <small>
+                {sum.workedShifts} shift{sum.workedShifts === 1 ? '' : 's'} · {+(sum.workedPaidMinutes / 60).toFixed(2)} hrs
+              </small>
+            </div>
+            <div>
+              <span>Still rostered</span>
+              <b>{fmtMoney(sum.gross - sum.workedGross)}</b>
+              <small>
+                {sum.shifts - sum.workedShifts} shift{sum.shifts - sum.workedShifts === 1 ? '' : 's'} · estimate
+              </small>
+            </div>
+          </div>
+        )}
         {sum.untaxedGross > 0 && (
           <div className="hero-note">
             Includes {fmtMoney(sum.untaxedGross)} from message rosters, counted with no tax or super taken off
@@ -104,6 +122,24 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
       {settings.taxMode === 'whm' && (
         <p className="small muted pad">Working holiday makers have no tax-free threshold: 15% from the first dollar.</p>
       )}
+
+      {(() => {
+        // Overlapping shifts at the same workplace are almost always a duplicate from an earlier import
+        const dupDays = new Set<string>();
+        for (const x of shifts)
+          for (const y of shifts)
+            if (x.id < y.id && x.date === y.date && x.workplaceId === y.workplaceId) {
+              const a = calcShift(x, workplaceFor(x, workplaces)!, 'effective');
+              const b = calcShift(y, workplaceFor(y, workplaces)!, 'effective');
+              if (a.start < b.end && b.start < a.end) dupDays.add(x.date);
+            }
+        return dupDays.size ? (
+          <p className="dup-warning">
+            Overlapping shifts on {[...dupDays].sort().map(fmtDateShort).join(', ')}. One is probably a duplicate from an earlier import and is
+            being counted twice. Open it and tap Delete.
+          </p>
+        ) : null;
+      })()}
 
       <div className="section-head">
         <h2>Shifts</h2>

@@ -12,6 +12,8 @@ export interface ActualWork {
 export interface TandaPay {
   hours: number;
   pay: number;
+  /** Paid break minutes Tanda had recorded when this pay was read */
+  paidBreak?: number;
 }
 
 /** A version of the shift from another source that is not currently applied */

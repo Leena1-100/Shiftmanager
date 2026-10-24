@@ -1634,3 +1634,11 @@ details.advanced summary {
 a.link {
   color: var(--sub);
 }
+
+.shift-actual .missed {
+  color: #d9761c;
+}
+
+.grow {
+  flex: 1 1 200px;
+}

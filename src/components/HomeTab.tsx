@@ -254,6 +254,7 @@ function ShiftCard({
                 {eff.workedMinutes - plan.workedMinutes}m)
               </span>
             )}
+            {eff.missedPaidBreak > 0 && <span className="missed"> · Missed paid break +{eff.missedPaidBreak}m paid</span>}
           </div>
         ) : (
           <div className="shift-todo">

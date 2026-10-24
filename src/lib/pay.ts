@@ -48,6 +48,8 @@ export interface ShiftCalc {
   workedMinutes: number;
   /** Minutes added to meet the minimum engagement */
   topUpMinutes: number;
+  /** Paid break minutes that were skipped and are paid as extra work time */
+  missedPaidBreak: number;
   minutesByBand: Partial<Record<Band, number>>;
   pay: number;
   usedActual: boolean;
@@ -86,7 +88,16 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
     const b = bandAt(shift.date, t, ph, wp);
     minutesByBand[b] = (minutesByBand[b] ?? 0) + 1;
   }
-  const workedMinutes = span - unpaidBreak;
+  // A paid break that wasn't taken is paid as extra work time (as Tanda does).
+  // For Tanda shifts the baseline is what Tanda recorded; otherwise the award entitlement.
+  let missedPaidBreak = 0;
+  if (useActual) {
+    const baseline = shift.tandaPay ? (shift.tandaPay.paidBreak ?? rule.paidMinutes) : rule.paidMinutes;
+    missedPaidBreak = Math.max(0, baseline - shift.actual!.paidBreak);
+  }
+  const missedBand = bandAt(shift.date, Math.max(start, end - 1), ph, wp);
+  if (missedPaidBreak > 0) minutesByBand[missedBand] = (minutesByBand[missedBand] ?? 0) + missedPaidBreak;
+  const workedMinutes = span - unpaidBreak + missedPaidBreak;
 
   let topUpMinutes = 0;
   if (wp.minEngagementMinutes > 0 && workedMinutes > 0 && workedMinutes < wp.minEngagementMinutes) {
@@ -101,7 +112,9 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
   }
   // Once a shift is worked, Tanda's own dollar figure is what gets paid
   const fromTanda = useActual && !!shift.tandaPay;
-  if (fromTanda) pay = shift.tandaPay!.pay;
+  if (fromTanda) {
+    pay = shift.tandaPay!.pay + (missedPaidBreak * wp.baseRate * wp.multipliers[missedBand]) / 60;
+  }
 
   return {
     start,
@@ -112,6 +125,7 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
     paidCount: useActual ? (paidBreak > 0 ? Math.max(1, Math.round(paidBreak / 10)) : 0) : rule.paidCount,
     workedMinutes,
     topUpMinutes,
+    missedPaidBreak,
     minutesByBand,
     pay: round2(pay),
     usedActual: useActual,

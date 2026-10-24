@@ -294,7 +294,7 @@ export function parseTandaBlocks(text: string, weekStart: string): ParsedShift[]
     };
     if (actualRange) {
       shift.actual = { start: actualRange[0], end: actualRange[1], unpaidBreak: unpaid, paidBreak: paid };
-      if (tandaPay) shift.tandaPay = tandaPay;
+      if (tandaPay) shift.tandaPay = { ...tandaPay, paidBreak: paid };
     } else if (hasBreaks) {
       shift.unpaidBreak = unpaid;
     }

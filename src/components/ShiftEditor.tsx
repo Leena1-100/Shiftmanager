@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import type { Shift, Workplace } from '../types';
+import type { Settings, Shift, Workplace } from '../types';
 import { breaksFor, calcShift, isMessageOnly } from '../lib/pay';
 import { newId } from '../lib/merge';
 import ConfirmButton from './ConfirmButton';
+import PayBreakdown from './PayBreakdown';
 import { fmtDateLong, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
 
 interface Props {
   shift: Shift | null;
   defaultDate: string;
   workplaces: Workplace[];
+  allShifts: Shift[];
+  settings: Settings;
   onClose: () => void;
   onSave: (s: Shift) => void;
   onDelete: (id: string) => void;
@@ -16,7 +19,7 @@ interface Props {
 
 const num = (v: string) => Math.max(0, Math.round(Number(v) || 0));
 
-export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, onSave, onDelete }: Props) {
+export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts, settings, onClose, onSave, onDelete }: Props) {
   const [workplaceId, setWorkplaceId] = useState(
     workplaces.find((w) => w.id === shift?.workplaceId)?.id ?? workplaces[0].id,
   );
@@ -213,6 +216,8 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, onClose, o
             </p>
           )}
         </div>
+
+        {draft && <PayBreakdown shift={draft} wp={wp} workplaces={workplaces} allShifts={allShifts} settings={settings} />}
 
         {shift && isMessageOnly(shift) && (
           <div className="tax-toggle">

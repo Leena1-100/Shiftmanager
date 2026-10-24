@@ -1657,3 +1657,78 @@ a.link {
 .toggle-row p {
   margin-top: 2px;
 }
+
+/* ---------- Pay breakdown ---------- */
+.breakdown-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bd-section + .bd-section {
+  border-top: 1px dashed var(--line);
+  padding-top: 10px;
+}
+
+.bd-head {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--sub);
+}
+
+.bd-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.bd-row > span:first-child {
+  min-width: 0;
+}
+
+.bd-row small {
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.bd-row > :last-child {
+  flex: none;
+  text-align: right;
+}
+
+.bd-row.strong,
+.bd-row.total {
+  font-weight: 700;
+}
+
+.bd-row.total {
+  font-size: 15px;
+  padding-top: 4px;
+}
+
+.bd-row.muted {
+  color: var(--sub);
+}
+
+.small.match {
+  color: var(--mint-strong);
+  font-weight: 600;
+}
+
+.small.mismatch {
+  color: #c77712;
+}

@@ -202,6 +202,8 @@ export default function App() {
           shift={editing.shift}
           defaultDate={editing.date}
           workplaces={state.workplaces}
+          allShifts={state.shifts}
+          settings={settings}
           onClose={() => setEditing(null)}
           onSave={(s) => {
             saveShift(s);

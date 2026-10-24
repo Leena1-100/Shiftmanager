@@ -53,6 +53,12 @@ export interface ShiftCalc {
   missedBreakMinutes: number;
   /** Flat per-shift allowance included in pay */
   allowance: number;
+  /** Penalty band the missed break time is paid at */
+  missedBand: Band;
+  /** Missed break time as Tanda pays it: hours rounded to 2 decimals */
+  missedHours: number;
+  /** Pay for missed break time */
+  missedPay: number;
   minutesByBand: Partial<Record<Band, number>>;
   pay: number;
   usedActual: boolean;
@@ -105,7 +111,8 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
   }
   const missedBand = bandAt(shift.date, Math.max(start, end - 1), ph, wp);
   // Tanda pays missed breaks in hours rounded to 2 decimals (10 min = 0.17 h)
-  const missedPay = ((Math.round((missedBreakMinutes / 60) * 100) / 100) * wp.baseRate * wp.multipliers[missedBand]);
+  const missedHours = Math.round((missedBreakMinutes / 60) * 100) / 100;
+  const missedPay = missedHours * wp.baseRate * wp.multipliers[missedBand];
   if (missedBreakMinutes > 0) minutesByBand[missedBand] = (minutesByBand[missedBand] ?? 0) + missedBreakMinutes;
   const workedMinutes = span - unpaidBreak;
 
@@ -140,6 +147,9 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
     topUpMinutes,
     missedBreakMinutes,
     allowance: fromTanda ? 0 : allowance,
+    missedBand,
+    missedHours,
+    missedPay: round2(missedPay),
     minutesByBand,
     pay: round2(pay),
     usedActual: useActual,

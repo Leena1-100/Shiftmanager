@@ -368,8 +368,8 @@ describe('missed paid breaks', () => {
   it('calculated shifts add missed paid break minutes too', () => {
     const msg: Shift = {
       ...tandaShift,
-      source: 'message',
-      sources: ['message'],
+      source: 'manual',
+      sources: ['manual'],
       tandaPay: undefined,
       actual: { start: hm(9), end: hm(15), unpaidBreak: 30, paidBreak: 0 },
     };
@@ -386,8 +386,8 @@ describe('matching Tanda pay from hours, missed breaks and allowance', () => {
     date,
     start,
     end,
-    source: 'message',
-    sources: ['message'],
+    source: 'manual',
+    sources: ['manual'],
     workplaceId: 'w',
     actual: { start, end, paidBreak, unpaidBreak },
   });
@@ -465,5 +465,31 @@ describe('week totals comparable with Tanda', () => {
     expect(+(s.workedPaidMinutes / 60).toFixed(2)).toBe(27.08);
     expect(s.workedShifts).toBe(4);
     expect(s.gross).toBeGreaterThan(776.94);
+  });
+});
+
+describe('message roster shifts are paid flat', () => {
+  const wp = { ...newWorkplace(0), id: 'w', laundryAllowance: true };
+  const msg = (date: string, extra: Partial<Shift> = {}): Shift => ({
+    id: date, date, start: hm(8, 30), end: hm(16), source: 'message', sources: ['message'], workplaceId: 'w', ...extra,
+  });
+
+  it('Saturday: paid hours x base rate, no penalty or laundry', () => {
+    // 7h30m - 30m meal = 7h x $27.81
+    expect(calcShift(msg('2026-10-24'), wp)).toMatchObject({ pay: 194.67, flat: true, allowance: 0 });
+  });
+
+  it('casual base rate is used without the casual loading', () => {
+    const casual = { ...applyAward(wp, { employment: 'casual' }), id: 'w' };
+    expect(calcShift(msg('2026-10-21'), casual).pay).toBe(194.67);
+  });
+
+  it('logged actual times are still used, without missed-break extras', () => {
+    const s = msg('2026-10-23', { actual: { start: hm(10, 30), end: hm(16, 15), paidBreak: 0, unpaidBreak: 30 } });
+    expect(calcShift(s, wp)).toMatchObject({ pay: 146, missedBreakMinutes: 0 }); // 5.25h x $27.81
+  });
+
+  it('switching tax on makes it a normal award shift again', () => {
+    expect(calcShift(msg('2026-10-24', { applyTax: true }), wp)).toMatchObject({ pay: 244.62, flat: false });
   });
 });

@@ -222,15 +222,15 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
         {shift && isMessageOnly(shift) && (
           <div className="tax-toggle">
             <div>
-              <b>{applyTax ? 'Tax and super applied' : 'No tax or super taken off'}</b>
+              <b>{applyTax ? 'Award pay with tax & super' : 'Flat rate, no tax or super'}</b>
               <p className="small muted">
                 {applyTax
-                  ? 'This shift counts towards your tax and super estimate.'
-                  : 'Message rosters are counted at their full amount.'}
+                  ? 'Paid like a normal shift: weekend rates, laundry and tax & super.'
+                  : `Paid hours × ${fmtMoney(wp.baseRate)}, with nothing added and nothing taken off.`}
               </p>
             </div>
             <button type="button" className={applyTax ? 'secondary' : 'primary'} onClick={() => setApplyTax(!applyTax)}>
-              {applyTax ? 'Remove tax & super' : 'Apply tax & super'}
+              {applyTax ? 'Back to flat rate' : 'Use award pay + tax'}
             </button>
           </div>
         )}

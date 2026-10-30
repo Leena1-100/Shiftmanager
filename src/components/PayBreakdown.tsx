@@ -80,6 +80,19 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
 
       <div className="bd-section">
         <div className="bd-head">Pay</div>
+        {c.flat ? (
+          <div className="bd-row">
+            <span>
+              Message roster: flat rate
+              <br />
+              <small>
+                {hours(c.workedMinutes)} × {fmtMoney(rate)} (no weekend rates, allowances or missed-break extras)
+              </small>
+            </span>
+            <b>{fmtMoney(c.pay)}</b>
+          </div>
+        ) : (
+          <>
         {bandRows.map(([band, min]) => (
           <div className="bd-row" key={band}>
             <span>
@@ -157,6 +170,8 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
             </p>
           </>
         )}
+          </>
+        )}
         <div className="bd-row total">
           <span>Pay before tax</span>
           <b>{fmtMoney(c.pay)}</b>
@@ -166,7 +181,7 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
       <div className="bd-section">
         <div className="bd-head">Tax &amp; super</div>
         {untaxed ? (
-          <p className="small muted">Message roster: no tax or super taken off. Use the button below to change this.</p>
+          <p className="small muted">Message roster: no tax or super taken off. The button below switches this shift to award pay with tax.</p>
         ) : (
           <>
             <div className="bd-row">

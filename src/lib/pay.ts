@@ -64,6 +64,8 @@ export interface ShiftCalc {
   usedActual: boolean;
   /** Pay taken from Tanda instead of calculated */
   fromTanda: boolean;
+  /** Message-roster shift paid as paid hours x base rate (no penalty rates, allowances or tax) */
+  flat: boolean;
 }
 
 export function round2(n: number): number {
@@ -136,6 +138,30 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
   // Tanda's figure already includes allowances; only breaks missed since then are added
   if (fromTanda) pay = shift.tandaPay!.pay + missedPay;
 
+  // Message rosters are paid as plain hours x base rate, with nothing added and no tax or super
+  if (isUntaxed(shift)) {
+    return {
+      start,
+      end,
+      span,
+      unpaidBreak,
+      paidBreak,
+      paidCount: useActual ? (paidBreak > 0 ? Math.max(1, Math.round(paidBreak / 10)) : 0) : rule.paidCount,
+      workedMinutes,
+      topUpMinutes: 0,
+      missedBreakMinutes: 0,
+      allowance: 0,
+      missedBand,
+      missedHours: 0,
+      missedPay: 0,
+      minutesByBand: workedMinutes > 0 ? { weekday: workedMinutes } : {},
+      pay: round2((workedMinutes / 60) * wp.baseRate),
+      usedActual: useActual,
+      fromTanda: false,
+      flat: true,
+    };
+  }
+
   return {
     start,
     end,
@@ -154,6 +180,7 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
     pay: round2(pay),
     usedActual: useActual,
     fromTanda,
+    flat: false,
   };
 }
 
@@ -197,7 +224,7 @@ export function isMessageOnly(shift: Shift): boolean {
   return shift.sources.length > 0 && shift.sources.every((s) => s === 'message');
 }
 
-/** Message-roster shifts are counted without tax or super unless the user turns tax on for that shift */
+/** Message-roster shifts are paid at a flat rate without tax or super, unless the user switches that shift to normal award pay */
 export function isUntaxed(shift: Shift): boolean {
   return isMessageOnly(shift) && !shift.applyTax;
 }

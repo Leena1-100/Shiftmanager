@@ -6,13 +6,14 @@ import { taxFreeRoom, weeklyWithholding, WEEKLY_TAX_FREE } from '../lib/tax';
 import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
 import { PlusIcon, SwapIcon, ClockIcon, CheckIcon } from './Icons';
 
-type DayType = 'weekday' | 'saturday' | 'sunday' | 'publicHoliday';
-const DAY_TYPES: DayType[] = ['weekday', 'saturday', 'sunday', 'publicHoliday'];
+type DayType = 'weekday' | 'saturday' | 'sunday' | 'publicHoliday' | 'message';
+const DAY_TYPES: DayType[] = ['weekday', 'saturday', 'sunday', 'publicHoliday', 'message'];
 const DAY_TYPE_LABEL: Record<DayType, string> = {
   weekday: 'Weekdays',
   saturday: 'Saturday',
   sunday: 'Sunday',
   publicHoliday: 'Public holiday',
+  message: 'Message rosters',
 };
 function dayType(shift: Shift): DayType {
   if (shift.publicHoliday) return 'publicHoliday';
@@ -189,7 +190,8 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
               for (const sh of shifts) {
                 if (workplaceFor(sh, workplaces)?.id !== wp.id) continue;
                 const c = calcShift(sh, wp, mode);
-                const key = dayType(sh);
+                // Message rosters are paid flat, so they get their own line instead of a day type
+                const key = c.flat ? 'message' : dayType(sh);
                 const g = groups.get(key) ?? { shifts: 0, worked: 0, minutes: 0, pay: 0 };
                 g.shifts++;
                 if (c.usedActual) g.worked++;
@@ -215,7 +217,7 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
                           <span>
                             {DAY_TYPE_LABEL[d]}{' '}
                             <span className="muted">
-                              ×{wp.multipliers[d]} · {g.shifts} shift{g.shifts === 1 ? '' : 's'}
+                              {d === 'message' ? 'flat rate, no tax' : `×${wp.multipliers[d]}`} · {g.shifts} shift{g.shifts === 1 ? '' : 's'}
                               {g.worked < g.shifts && ` (${g.shifts - g.worked} rostered)`}
                             </span>
                           </span>
@@ -330,7 +332,7 @@ function ShiftCard({
         <b>{fmtMoney(eff.pay)}</b>
         <span className="muted small">{fmtDuration(eff.workedMinutes)}</span>
         {eff.fromTanda && <span className="badge tanda">Tanda pay</span>}
-        {isUntaxed(shift) && <span className="untaxed">No tax · no super</span>}
+        {isUntaxed(shift) && <span className="untaxed">Flat rate · no tax</span>}
       </div>
     </article>
   );

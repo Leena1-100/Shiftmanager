@@ -313,8 +313,8 @@ describe('message rosters are not taxed', () => {
     const fromMessage: Shift = { ...base, id: 'a', source: 'message', sources: ['message'] };
     const fromTanda: Shift = { ...base, id: 'b', date: '2026-10-28', source: 'tanda', sources: ['tanda', 'message'] };
     const s = summarize([fromMessage, fromTanda], [wp], 'effective');
-    expect(s.gross).toBe(330);
-    expect(s.untaxedGross).toBe(165);
+    expect(s.gross).toBe(313.5); // message: 5.5h x $27 = 148.50 (flat) + Tanda-confirmed 165.00
+    expect(s.untaxedGross).toBe(148.5);
     expect(taxableGross(s)).toBe(165);
   });
 
@@ -474,19 +474,20 @@ describe('message roster shifts are paid flat', () => {
     id: date, date, start: hm(8, 30), end: hm(16), source: 'message', sources: ['message'], workplaceId: 'w', ...extra,
   });
 
-  it('Saturday: paid hours x base rate, no penalty or laundry', () => {
-    // 7h30m - 30m meal = 7h x $27.81
-    expect(calcShift(msg('2026-10-24'), wp)).toMatchObject({ pay: 194.67, flat: true, allowance: 0 });
+  it('Saturday: paid hours x $27, no penalty or laundry', () => {
+    // 7h30m - 30m meal = 7h x $27
+    expect(calcShift(msg('2026-10-24'), wp)).toMatchObject({ pay: 189, flat: true, allowance: 0 });
   });
 
-  it('casual base rate is used without the casual loading', () => {
+  it('uses the workplace message rate when set, whatever the award rate or employment', () => {
     const casual = { ...applyAward(wp, { employment: 'casual' }), id: 'w' };
-    expect(calcShift(msg('2026-10-21'), casual).pay).toBe(194.67);
+    expect(calcShift(msg('2026-10-21'), casual).pay).toBe(189);
+    expect(calcShift(msg('2026-10-21'), { ...wp, messageRate: 25 }).pay).toBe(175);
   });
 
   it('logged actual times are still used, without missed-break extras', () => {
     const s = msg('2026-10-23', { actual: { start: hm(10, 30), end: hm(16, 15), paidBreak: 0, unpaidBreak: 30 } });
-    expect(calcShift(s, wp)).toMatchObject({ pay: 146, missedBreakMinutes: 0 }); // 5.25h x $27.81
+    expect(calcShift(s, wp)).toMatchObject({ pay: 141.75, missedBreakMinutes: 0 }); // 5.25h x $27
   });
 
   it('switching tax on makes it a normal award shift again', () => {

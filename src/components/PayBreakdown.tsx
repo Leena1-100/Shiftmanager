@@ -1,6 +1,6 @@
 import type { Band, Settings, Shift, Workplace } from '../types';
 import { bandAt, calcShift, isUntaxed, summarize, taxableGross } from '../lib/pay';
-import { bandLabel } from '../lib/defaults';
+import { bandLabel, messageRate } from '../lib/defaults';
 import { weeklyWithholding } from '../lib/tax';
 import { addDays, fmtDateShort, fmtDuration, fmtMoney, fmtTime, weekStartOf } from '../lib/time';
 
@@ -86,7 +86,7 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
               Message roster: flat rate
               <br />
               <small>
-                {hours(c.workedMinutes)} × {fmtMoney(rate)} (no weekend rates, allowances or missed-break extras)
+                {hours(c.workedMinutes)} × {fmtMoney(messageRate(wp))} (no weekend rates, allowances or missed-break extras)
               </small>
             </span>
             <b>{fmtMoney(c.pay)}</b>

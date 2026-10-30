@@ -1,6 +1,6 @@
 import type { Band, BreakTier, Shift, Workplace } from '../types';
 import { addDays, dayOfWeek } from './time';
-import { laundryPerShift } from './defaults';
+import { laundryPerShift, messageRate } from './defaults';
 
 export interface BreakAllowance {
   paidCount: number;
@@ -64,7 +64,7 @@ export interface ShiftCalc {
   usedActual: boolean;
   /** Pay taken from Tanda instead of calculated */
   fromTanda: boolean;
-  /** Message-roster shift paid as paid hours x base rate (no penalty rates, allowances or tax) */
+  /** Message-roster shift paid as paid hours x the workplace's message rate (no penalty rates, allowances or tax) */
   flat: boolean;
 }
 
@@ -155,7 +155,7 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
       missedHours: 0,
       missedPay: 0,
       minutesByBand: workedMinutes > 0 ? { weekday: workedMinutes } : {},
-      pay: round2((workedMinutes / 60) * wp.baseRate),
+      pay: round2((workedMinutes / 60) * messageRate(wp)),
       usedActual: useActual,
       fromTanda: false,
       flat: true,

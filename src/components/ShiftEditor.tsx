@@ -4,6 +4,7 @@ import { breaksFor, calcShift, isMessageOnly } from '../lib/pay';
 import { newId } from '../lib/merge';
 import ConfirmButton from './ConfirmButton';
 import PayBreakdown from './PayBreakdown';
+import { messageRate } from '../lib/defaults';
 import { fmtDateLong, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
 
 interface Props {
@@ -226,7 +227,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
               <p className="small muted">
                 {applyTax
                   ? 'Paid like a normal shift: weekend rates, laundry and tax & super.'
-                  : `Paid hours × ${fmtMoney(wp.baseRate)}, with nothing added and nothing taken off.`}
+                  : `Paid hours × ${fmtMoney(messageRate(wp))}, with nothing added and nothing taken off.`}
               </p>
             </div>
             <button type="button" className={applyTax ? 'secondary' : 'primary'} onClick={() => setApplyTax(!applyTax)}>

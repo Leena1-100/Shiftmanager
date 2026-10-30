@@ -144,6 +144,14 @@ export const JUNIOR_AGE_LABEL: Record<JuniorAge, string> = {
   '20': '20',
 };
 
+/** Flat hourly rate for message-roster shifts when the workplace hasn't set one */
+export const DEFAULT_MESSAGE_RATE = 27;
+
+/** Flat hourly rate this workplace pays for message-roster shifts */
+export function messageRate(wp: Pick<Workplace, 'messageRate'>): number {
+  return wp.messageRate ?? DEFAULT_MESSAGE_RATE;
+}
+
 export const EMPLOYMENT_LABEL: Record<Employment, string> = {
   parttime: 'Part-time',
   casual: 'Casual',

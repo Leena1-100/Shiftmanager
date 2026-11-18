@@ -1792,3 +1792,37 @@ a.link {
   padding: 8px 12px;
   font-size: 13px;
 }
+
+/* Exact amounts in the calendar cells */
+.cal-day {
+  min-height: 64px;
+  padding-inline: 1px;
+}
+
+.cal-pay {
+  font-size: 11.5px;
+  letter-spacing: -0.4px;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.cal-pay small {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.cal-hours {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-day.worked .cal-hours {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cal-legend {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}

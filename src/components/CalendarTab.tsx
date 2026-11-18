@@ -23,8 +23,16 @@ interface DayTotal {
   colors: string[];
 }
 
-/** Whole dollars for the small calendar cells: $229 */
-const shortMoney = (n: number) => `$${Math.round(n).toLocaleString('en-AU')}`;
+/** Exact pay for the narrow calendar cells, dollars and cents without the $ sign: 229.32 */
+function CellPay({ amount }: { amount: number }) {
+  const [dollars, cents] = amount.toFixed(2).split('.');
+  return (
+    <span className="cal-pay" title={fmtMoney(amount)}>
+      {Number(dollars).toLocaleString('en-AU')}
+      <small>.{cents}</small>
+    </span>
+  );
+}
 
 export default function CalendarTab({ state, onEdit, onAdd, onImportWeek }: Props) {
   const { settings, workplaces, shifts } = state;
@@ -126,7 +134,8 @@ export default function CalendarTab({ state, onEdit, onAdd, onImportWeek }: Prop
                   return (
                     <button key={date} className={cls} onClick={() => setSelected(date === selected ? null : date)} aria-label={fmtDateLong(date)}>
                       <span className="cal-num">{Number(date.slice(8))}</span>
-                      {d && <span className="cal-pay">{shortMoney(d.pay)}</span>}
+                      {d && <CellPay amount={d.pay} />}
+                      {d && <span className="cal-hours">{+(d.minutes / 60).toFixed(2)}h</span>}
                       {d && workplaces.length > 1 && (
                         <span className="cal-dots">
                           {d.colors.map((c) => (
@@ -142,6 +151,7 @@ export default function CalendarTab({ state, onEdit, onAdd, onImportWeek }: Prop
           );
         })}
         <div className="cal-legend small muted">
+          <span>Amounts in $ · paid hours</span>
           <span>
             <i className="lg worked" /> Worked
           </span>

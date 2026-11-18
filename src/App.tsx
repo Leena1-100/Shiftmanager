@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Settings, Shift, WeekMeta, Workplace } from './types';
 import { usePersistentState } from './lib/storage';
 import { useCloudSync } from './lib/useCloudSync';
+import { useUpdateCheck } from './lib/useUpdateCheck';
 import { addDays, fmtDateShort, todayISO, weekStartOf } from './lib/time';
 import { HomeIcon, CalendarIcon, WalletIcon, GearIcon, ChevronLeft, ChevronRight, CloseIcon } from './components/Icons';
 import HomeTab from './components/HomeTab';
@@ -30,6 +31,7 @@ export default function App() {
     setResetKey((k) => k + 1);
   };
   const cloud = useCloudSync(state, replaceState);
+  const update = useUpdateCheck();
 
   const weekEnd = addDays(weekStart, 6);
   const weekShifts = useMemo(
@@ -65,9 +67,19 @@ export default function App() {
       shifts: st.shifts.filter((s) => s.workplaceId !== id),
     }));
 
+  const updateBanner = update.updateReady && (
+    <div className="update-banner">
+      <span>A new version of ShiftMoney is ready.</span>
+      <button className="primary" onClick={update.reload}>
+        Update now
+      </button>
+    </div>
+  );
+
   if (!state.onboarded || state.workplaces.length === 0) {
     return (
       <div className="app">
+        {updateBanner}
         <Onboarding
           settings={settings}
           cloud={cloud}
@@ -109,6 +121,8 @@ export default function App() {
           </div>
         )}
       </header>
+
+      {updateBanner}
 
       <main className="content">
         {tab === 'home' && (

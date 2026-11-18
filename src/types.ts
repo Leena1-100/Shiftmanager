@@ -97,8 +97,10 @@ export interface Workplace {
   laundryAllowance?: boolean;
   /** Laundry allowance per shift for awards without a preset amount ($) */
   shiftAllowance?: number;
-  /** Flat hourly rate for shifts that only came from a message roster (default $27) */
+  /** Flat hourly rate for message-roster (cash) shifts on weekends and public holidays (default $27) */
   messageRate?: number;
+  /** Flat hourly rate for message-roster (cash) shifts on weekdays (default $25) */
+  messageRateWeekday?: number;
 }
 
 /** Personal settings shared by all workplaces */

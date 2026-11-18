@@ -1,5 +1,5 @@
 import type { AwardId, Band, BreakTier, Employment, JuniorAge, Multipliers, Settings, Workplace } from '../types';
-import { fmtClock12 } from './time';
+import { dayOfWeek, fmtClock12 } from './time';
 
 /**
  * Fast Food Award break entitlements (matches how Tanda applies them)
@@ -144,12 +144,25 @@ export const JUNIOR_AGE_LABEL: Record<JuniorAge, string> = {
   '20': '20',
 };
 
-/** Flat hourly rate for message-roster shifts when the workplace hasn't set one */
+/** Flat hourly rates for message-roster (cash) shifts when the workplace hasn't set its own */
+export const DEFAULT_MESSAGE_RATE_WEEKDAY = 25;
 export const DEFAULT_MESSAGE_RATE = 27;
 
-/** Flat hourly rate this workplace pays for message-roster shifts */
-export function messageRate(wp: Pick<Workplace, 'messageRate'>): number {
-  return wp.messageRate ?? DEFAULT_MESSAGE_RATE;
+/** Whether a shift on this date is paid the weekend cash rate (Saturday, Sunday or a public holiday) */
+export function isWeekendRateDay(date: string, publicHoliday?: boolean): boolean {
+  const dow = dayOfWeek(date);
+  return !!publicHoliday || dow === 0 || dow === 6;
+}
+
+/** Flat hourly rate this workplace pays for a message-roster shift on this date */
+export function messageRate(
+  wp: Pick<Workplace, 'messageRate' | 'messageRateWeekday'>,
+  date: string,
+  publicHoliday?: boolean,
+): number {
+  return isWeekendRateDay(date, publicHoliday)
+    ? (wp.messageRate ?? DEFAULT_MESSAGE_RATE)
+    : (wp.messageRateWeekday ?? DEFAULT_MESSAGE_RATE_WEEKDAY);
 }
 
 export const EMPLOYMENT_LABEL: Record<Employment, string> = {

@@ -11,6 +11,7 @@ import {
   bandLabel,
   laundryPerShift,
   DEFAULT_MESSAGE_RATE,
+  DEFAULT_MESSAGE_RATE_WEEKDAY,
 } from '../lib/defaults';
 import { fmtDuration, fmtMoney, fmtTime, parseHHMM } from '../lib/time';
 
@@ -175,21 +176,43 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
         <p className="small muted">For casuals the rate above excludes the 25% loading. The loading is built into the casual penalty rates.</p>
       )}
 
-      <label className="field">
-        <span>Rate for message rosters</span>
-        <div className="money-input">
-          <span>$</span>
-          <input
-            inputMode="decimal"
-            placeholder={String(DEFAULT_MESSAGE_RATE)}
-            defaultValue={wp.messageRate ?? DEFAULT_MESSAGE_RATE}
-            onChange={(e) => set({ messageRate: e.target.value === '' ? undefined : Math.max(0, numOr(e.target.value, DEFAULT_MESSAGE_RATE)) })}
-          />
-          <span className="muted">/ hour</span>
+      <div className="field">
+        <span>Rates for message rosters (cash)</span>
+        <div className="row2">
+          <label className="money-input">
+            <span>$</span>
+            <input
+              inputMode="decimal"
+              aria-label="Weekday rate for message rosters"
+              placeholder={String(DEFAULT_MESSAGE_RATE_WEEKDAY)}
+              defaultValue={wp.messageRateWeekday ?? DEFAULT_MESSAGE_RATE_WEEKDAY}
+              onChange={(e) =>
+                set({
+                  messageRateWeekday:
+                    e.target.value === '' ? undefined : Math.max(0, numOr(e.target.value, DEFAULT_MESSAGE_RATE_WEEKDAY)),
+                })
+              }
+            />
+            <span className="muted">weekday</span>
+          </label>
+          <label className="money-input">
+            <span>$</span>
+            <input
+              inputMode="decimal"
+              aria-label="Weekend rate for message rosters"
+              placeholder={String(DEFAULT_MESSAGE_RATE)}
+              defaultValue={wp.messageRate ?? DEFAULT_MESSAGE_RATE}
+              onChange={(e) =>
+                set({ messageRate: e.target.value === '' ? undefined : Math.max(0, numOr(e.target.value, DEFAULT_MESSAGE_RATE)) })
+              }
+            />
+            <span className="muted">weekend</span>
+          </label>
         </div>
-      </label>
+      </div>
       <p className="small muted">
-        Shifts that only came from a message are paid as hours × this rate, with no weekend rates, allowances, tax or super.
+        Shifts that only came from a message are paid as hours × these rates per hour (weekend = Saturday, Sunday and public holidays), with no
+        allowances, tax or super.
       </p>
 
       <div className="toggle-row">

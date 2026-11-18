@@ -155,7 +155,7 @@ export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effect
       missedHours: 0,
       missedPay: 0,
       minutesByBand: workedMinutes > 0 ? { weekday: workedMinutes } : {},
-      pay: round2((workedMinutes / 60) * messageRate(wp)),
+      pay: round2((workedMinutes / 60) * messageRate(wp, shift.date, shift.publicHoliday)),
       usedActual: useActual,
       fromTanda: false,
       flat: true,

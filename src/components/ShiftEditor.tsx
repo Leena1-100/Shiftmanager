@@ -227,7 +227,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
               <p className="small muted">
                 {applyTax
                   ? 'Paid like a normal shift: weekend rates, laundry and tax & super.'
-                  : `Paid hours × ${fmtMoney(messageRate(wp))}, with nothing added and nothing taken off.`}
+                  : `Paid hours × ${fmtMoney(messageRate(wp, date, ph))}, with nothing added and nothing taken off.`}
               </p>
             </div>
             <button type="button" className={applyTax ? 'secondary' : 'primary'} onClick={() => setApplyTax(!applyTax)}>

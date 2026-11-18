@@ -313,8 +313,8 @@ describe('message rosters are not taxed', () => {
     const fromMessage: Shift = { ...base, id: 'a', source: 'message', sources: ['message'] };
     const fromTanda: Shift = { ...base, id: 'b', date: '2026-10-28', source: 'tanda', sources: ['tanda', 'message'] };
     const s = summarize([fromMessage, fromTanda], [wp], 'effective');
-    expect(s.gross).toBe(313.5); // message: 5.5h x $27 = 148.50 (flat) + Tanda-confirmed 165.00
-    expect(s.untaxedGross).toBe(148.5);
+    expect(s.gross).toBe(302.5); // message (Tue): 5.5h x $25 = 137.50 (flat) + Tanda-confirmed 165.00
+    expect(s.untaxedGross).toBe(137.5);
     expect(taxableGross(s)).toBe(165);
   });
 
@@ -479,15 +479,22 @@ describe('message roster shifts are paid flat', () => {
     expect(calcShift(msg('2026-10-24'), wp)).toMatchObject({ pay: 189, flat: true, allowance: 0 });
   });
 
-  it('uses the workplace message rate when set, whatever the award rate or employment', () => {
+  it('weekdays are paid $25, whatever the award rate or employment', () => {
     const casual = { ...applyAward(wp, { employment: 'casual' }), id: 'w' };
-    expect(calcShift(msg('2026-10-21'), casual).pay).toBe(189);
-    expect(calcShift(msg('2026-10-21'), { ...wp, messageRate: 25 }).pay).toBe(175);
+    expect(calcShift(msg('2026-10-21'), casual).pay).toBe(175); // Wed 7h x $25
+    expect(calcShift(msg('2026-10-25'), wp).pay).toBe(189); // Sun 7h x $27
+    expect(calcShift(msg('2026-10-21', { publicHoliday: true }), wp).pay).toBe(189); // public holiday = weekend rate
+  });
+
+  it('uses the workplace rates when set', () => {
+    const custom = { ...wp, messageRateWeekday: 24, messageRate: 30 };
+    expect(calcShift(msg('2026-10-21'), custom).pay).toBe(168);
+    expect(calcShift(msg('2026-10-24'), custom).pay).toBe(210);
   });
 
   it('logged actual times are still used, without missed-break extras', () => {
     const s = msg('2026-10-23', { actual: { start: hm(10, 30), end: hm(16, 15), paidBreak: 0, unpaidBreak: 30 } });
-    expect(calcShift(s, wp)).toMatchObject({ pay: 141.75, missedBreakMinutes: 0 }); // 5.25h x $27
+    expect(calcShift(s, wp)).toMatchObject({ pay: 131.25, missedBreakMinutes: 0 }); // Fri 5.25h x $25
   });
 
   it('switching tax on makes it a normal award shift again', () => {

@@ -1,5 +1,5 @@
 import type { Band, BreakTier, Shift, Workplace } from '../types';
-import { addDays, dayOfWeek } from './time';
+import { addDays, dayOfWeek, todayISO } from './time';
 import { laundryPerShift, messageRate } from './defaults';
 
 export interface BreakAllowance {
@@ -77,8 +77,14 @@ export function round2(n: number): number {
  * mode 'planned' = rostered times; 'effective' = actual times when recorded, otherwise rostered.
  * The unpaid break is assumed to sit in the middle of the shift; every other minute gets its band multiplier.
  */
-export function calcShift(shift: Shift, wp: Workplace, mode: 'planned' | 'effective' = 'effective'): ShiftCalc {
-  const useActual = mode === 'effective' && !!shift.actual;
+export function calcShift(
+  shift: Shift,
+  wp: Workplace,
+  mode: 'planned' | 'effective' = 'effective',
+  today: string = todayISO(),
+): ShiftCalc {
+  // A shift dated after today hasn't been worked yet, whatever was recorded for it
+  const useActual = mode === 'effective' && !!shift.actual && shift.date <= today;
   const start = useActual ? shift.actual!.start : shift.start;
   const end = useActual ? shift.actual!.end : shift.end;
   const span = Math.max(0, end - start);

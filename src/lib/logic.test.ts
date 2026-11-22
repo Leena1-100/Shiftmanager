@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseShifts } from './parser';
+import { fixHours, parseShifts } from './parser';
 import { calcShift, breaksFor, summarize, taxableGross } from './pay';
 import { mergeShifts, swapAlt } from './merge';
 import { weeklyWithholding, annualTax } from './tax';
@@ -499,5 +499,36 @@ describe('message roster shifts are paid flat', () => {
 
   it('switching tax on makes it a normal award shift again', () => {
     expect(calcShift(msg('2026-10-24', { applyTax: true }), wp)).toMatchObject({ pay: 244.62, flat: false });
+  });
+});
+
+describe('upcoming Tanda days and misread hours', () => {
+  const wp = { ...newWorkplace(0), id: 'w', laundryAllowance: true };
+  const shift: Shift = {
+    id: 'f', date: '2026-11-24', start: hm(7, 20), end: hm(16), source: 'tanda', sources: ['tanda'], workplaceId: 'w',
+    actual: { start: hm(7, 20), end: hm(16), paidBreak: 0, unpaidBreak: 0 },
+    tandaPay: { hours: 8.17, pay: 228.39, paidBreak: 0, unpaidBreak: 0 },
+  };
+
+  it('a shift dated after today counts as rostered, not worked', () => {
+    const c = calcShift(shift, wp, 'effective', '2026-11-22');
+    expect(c.usedActual).toBe(false);
+    expect(c.pay).toBeCloseTo(228.39, 1); // 8h 10m x $27.81 + laundry, the estimate Tanda shows (within a cent)
+    expect(calcShift(shift, wp, 'effective', '2026-11-24').usedActual).toBe(true);
+  });
+
+  it('Tanda estimates for upcoming days are not read as worked times', () => {
+    const [s] = parseShifts('Thu, 31 Dec 8.17 hrs | $228.39\n7:20 - 16:00\nFOH @ Queens Plaza', 'tanda', '2026-12-28');
+    expect(s).toMatchObject({ date: '2026-12-31', start: hm(7, 20), end: hm(16) });
+    expect(s.actual).toBeUndefined();
+    expect(s.tandaPay).toBeUndefined();
+  });
+
+  it('hours read without the decimal point are corrected', () => {
+    expect(fixHours(45)).toBe(4.5);
+    expect(fixHours(8.17)).toBe(8.17);
+    const st = reviveState({ version: 2, onboarded: true, workplaces: [wp], settings: {}, weeks: {},
+      shifts: [{ ...shift, date: '2026-11-05', tandaPay: { hours: 45, pay: 126.43 } }] });
+    expect(st.shifts[0].tandaPay?.hours).toBe(4.5);
   });
 });

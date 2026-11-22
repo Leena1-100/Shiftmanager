@@ -1,5 +1,5 @@
 import type { ActualWork, Source, TandaPay } from '../types';
-import { addDays, dayOfWeek, diffDays, makeISO, normalizeRange } from './time';
+import { addDays, dayOfWeek, diffDays, makeISO, normalizeRange, todayISO } from './time';
 
 export interface ParsedShift {
   date: string;
@@ -212,6 +212,11 @@ function rangesIn(text: string): [number, number][] {
 const TANDA_PAY_RE = /(\d{1,2}(?:\.\d{1,2})?)\s*hrs?\s*[|Il1!]?\s*\$\s*([\d,]+\.\d{2})/i;
 const BREAK_PART_RE = /(\d{1,3})\s*m(?:ins?)?\b([^\d]*)/gi;
 
+/** OCR sometimes drops the decimal point in Tanda's hours ("4.5" read as "45"); no shift is over 24 hours */
+export function fixHours(hours: number): number {
+  return hours > 24 ? hours / 10 : hours;
+}
+
 /** Range on the line that carries a label like "Worked:" (OCR may drop the colon) */
 function labelledRange(lines: string[], label: RegExp): [number, number] | null {
   for (const line of lines) {
@@ -263,7 +268,7 @@ export function parseTandaBlocks(text: string, weekStart: string): ParsedShift[]
       .flatMap((l) => rangesIn(l))[0];
     const payMatch = TANDA_PAY_RE.exec(flat);
     const tandaPay = payMatch
-      ? { hours: Number(payMatch[1]), pay: Number(payMatch[2].replace(/,/g, '')) }
+      ? { hours: fixHours(Number(payMatch[1])), pay: Number(payMatch[2].replace(/,/g, '')) }
       : undefined;
 
     // Tanda writes "10m paid, 30m unpaid". OCR often garbles "paid" (e.g. "10m ZIG) 30m unpaid"),
@@ -283,7 +288,9 @@ export function parseTandaBlocks(text: string, weekStart: string): ParsedShift[]
     const planned = rostered ?? headline ?? worked;
     if (!planned) continue;
     // The big time at the top of a day is the worked time once Tanda shows hours and dollars
-    const actualRange = worked ?? (tandaPay && headline ? headline : null);
+    // Tanda also shows estimated hours and dollars for rostered days that haven't happened yet
+    const upcoming = b.date > todayISO();
+    const actualRange = upcoming ? null : (worked ?? (tandaPay && headline ? headline : null));
     const shift: ParsedShift = {
       date: b.date,
       start: planned[0],

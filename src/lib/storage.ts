@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AppState, Workplace } from '../types';
 import { AWARDS, DEFAULT_SETTINGS, LEGACY_BREAK_TIERS, newWorkplace } from './defaults';
+import { fixHours } from './parser';
 
 const KEY = 'shiftmoney:v1';
 
@@ -63,6 +64,7 @@ export function reviveState(data: unknown): AppState {
     },
     shifts: d.shifts.map((s) => ({
       ...s,
+      ...(s.tandaPay ? { tandaPay: { ...s.tandaPay, hours: fixHours(s.tandaPay.hours) } } : {}),
       sources: s.sources ?? [s.source],
       workplaceId: workplaces.some((w) => w.id === s.workplaceId) ? s.workplaceId : fallbackId,
     })),

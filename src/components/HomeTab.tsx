@@ -84,7 +84,9 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
           </div>
           {money.cash > 0 && (
             <div>
-              <span>Cash shifts (no tax)</span>
+              <span>
+                Cash shifts (no tax{money.cashExact !== money.cash ? `, from ${fmtMoney(money.cashExact)}` : ''})
+              </span>
               <b>{fmtMoney(money.cash)}</b>
             </div>
           )}

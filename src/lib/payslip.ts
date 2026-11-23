@@ -120,7 +120,10 @@ export interface WeekMoney {
   tax: number;
   /** Take-home: payslip net (or Tanda minus estimated tax) plus cash shifts */
   net: number;
+  /** Cash shifts as actually handed over for the week (second decimal place dropped) */
   cash: number;
+  /** Cash shifts added up to the cent, before the cents digit is dropped */
+  cashExact: number;
   fromPayslip: boolean;
   /** The app's own Tanda total, to compare with the payslip */
   appTanda: number;
@@ -128,14 +131,21 @@ export interface WeekMoney {
   diff: number;
 }
 
+/** Cash is paid as one weekly total with the second decimal place dropped: $177.75 -> $177.70 */
+export function cashPaid(total: number): number {
+  return Math.floor(Math.round(total * 100) / 10) / 10;
+}
+
 /** A week's money, using the payslip's actual figures for the Tanda part when there is one */
 export function weekMoney(sum: WeekSummary, meta: WeekMeta | undefined, taxMode: TaxMode): WeekMoney {
   const appTanda = taxableGross(sum);
-  const cash = Math.round((sum.gross - appTanda) * 100) / 100;
+  const cashExact = Math.round((sum.gross - appTanda) * 100) / 100;
+  const cash = cashPaid(cashExact);
   const p = meta?.payslip;
   if (!p) {
     const tax = weeklyWithholding(appTanda, taxMode);
-    return { gross: sum.gross, tandaGross: appTanda, tax, net: sum.gross - tax, cash, fromPayslip: false, appTanda, diff: 0 };
+    const gross = Math.round((appTanda + cash) * 100) / 100;
+    return { gross, tandaGross: appTanda, tax, net: Math.round((gross - tax) * 100) / 100, cash, cashExact, fromPayslip: false, appTanda, diff: 0 };
   }
   const net = p.net ?? p.gross - p.tax;
   return {
@@ -144,6 +154,7 @@ export function weekMoney(sum: WeekSummary, meta: WeekMeta | undefined, taxMode:
     tax: p.tax,
     net: Math.round((net + cash) * 100) / 100,
     cash,
+    cashExact,
     fromPayslip: true,
     appTanda,
     diff: Math.round((p.gross - appTanda) * 100) / 100,

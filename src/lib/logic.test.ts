@@ -5,7 +5,7 @@ import { mergeShifts, swapAlt } from './merge';
 import { weeklyWithholding, annualTax } from './tax';
 import { FAST_FOOD_BREAK_TIERS as DEFAULT_BREAK_TIERS, LEGACY_BREAK_TIERS, applyAward, awardMinimumRate, newWorkplace } from './defaults';
 import { reviveState } from './storage';
-import { parsePayslip, payslipMismatch, weekMoney } from './payslip';
+import { cashPaid, parsePayslip, payslipMismatch, weekMoney } from './payslip';
 import { dollars, isTemplatePayslip } from './payslipTemplate';
 import type { Shift } from '../types';
 
@@ -654,5 +654,22 @@ describe('employer payslip layout (docs/payslip-format.md)', () => {
   it('never takes tax from the allowance heading or the laundry line', () => {
     const noPayg = OCR.replace(/^PAYG .*$/m, 'PAYG');
     expect(parsePayslip(noPayg).tax).toBe(58); // from gross - net, not $3.84
+  });
+});
+
+describe('weekly cash payout', () => {
+  it('drops the second decimal place from the week\'s cash total', () => {
+    expect(cashPaid(177.75)).toBe(177.7);
+    expect(cashPaid(406.92)).toBe(406.9);
+    expect(cashPaid(189)).toBe(189);
+    expect(cashPaid(131.25 + 189)).toBe(320.2);
+  });
+
+  it('week totals use the cash actually handed over', () => {
+    const wp = { ...newWorkplace(0), id: 'w' };
+    const sun: Shift = { id: 's', date: '2026-11-22', start: hm(9), end: hm(16, 5), source: 'message', sources: ['message'], workplaceId: 'w',
+      actual: { start: hm(9), end: hm(16, 5), paidBreak: 10, unpaidBreak: 30 } };
+    const m = weekMoney(summarize([sun], [wp], 'effective'), undefined, 'resident-tft');
+    expect(m).toMatchObject({ cashExact: 177.75, cash: 177.7, gross: 177.7, net: 177.7 });
   });
 });

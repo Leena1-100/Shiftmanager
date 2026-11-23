@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SheetBackdrop from './SheetBackdrop';
 import type { AppState, Settings, TaxMode, Workplace } from '../types';
 import { newWorkplace } from '../lib/defaults';
 import { TAX_MODE_LABEL } from '../lib/tax';
@@ -170,7 +171,7 @@ export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDelete
       <p className="small muted version">ShiftMoney version {__BUILD_ID__}</p>
 
       {editing && (
-        <div className="sheet-backdrop" onClick={() => setEditing(null)}>
+        <SheetBackdrop onClose={() => setEditing(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <div className="sheet-grip" />
             <h3>{isExisting ? 'Edit workplace' : 'Add workplace'}</h3>
@@ -201,7 +202,7 @@ export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDelete
               </button>
             </div>
           </div>
-        </div>
+        </SheetBackdrop>
       )}
     </div>
   );

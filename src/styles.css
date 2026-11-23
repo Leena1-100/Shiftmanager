@@ -2017,3 +2017,58 @@ a.link {
   margin-bottom: 2px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.25);
 }
+
+/* ---------- Sheet stability on phones ---------- */
+.sheet-backdrop {
+  overscroll-behavior: contain;
+}
+
+.sheet {
+  /* dvh follows the address bar and keyboard; vh is the fallback */
+  max-height: 92vh;
+  max-height: 92dvh;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet.tall {
+  max-height: 94vh;
+  max-height: 94dvh;
+}
+
+/* Date and time pickers keep their size instead of growing past the sheet */
+input[type='time'],
+input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 44px;
+  text-align: left;
+}
+
+input[type='time']::-webkit-date-and-time-value,
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+/* Safari zooms the page into any field under 16px when it's tapped, which throws the layout off */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* A long press while scrolling a sheet shouldn't start selecting its labels */
+.sheet {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.sheet input,
+.sheet textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}

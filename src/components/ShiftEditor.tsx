@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SheetBackdrop from './SheetBackdrop';
 import type { Settings, Shift, Workplace } from '../types';
 import { breaksFor, calcShift, isMessageOnly } from '../lib/pay';
 import { newId } from '../lib/merge';
@@ -90,7 +91,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
   const aRule = aSpan ? breaksFor(aSpan[1] - aSpan[0], wp.breakTiers) : null;
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <SheetBackdrop onClose={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="sheet-grip" />
         <h3>{shift ? fmtDateLong(shift.date) : 'Add shift'}</h3>
@@ -248,6 +249,6 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
           </button>
         </div>
       </div>
-    </div>
+    </SheetBackdrop>
   );
 }

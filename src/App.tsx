@@ -8,6 +8,7 @@ import { HomeIcon, CalendarIcon, WalletIcon, GearIcon, ChevronLeft, ChevronRight
 import HomeTab from './components/HomeTab';
 import ImportTab from './components/ImportTab';
 import PayslipSheet from './components/PayslipSheet';
+import SheetBackdrop from './components/SheetBackdrop';
 import CalendarTab from './components/CalendarTab';
 import HistoryTab from './components/HistoryTab';
 import SettingsTab from './components/SettingsTab';
@@ -223,7 +224,7 @@ export default function App() {
       )}
 
       {importWeek && (
-        <div className="sheet-backdrop" onClick={() => setImportWeek(null)}>
+        <SheetBackdrop onClose={() => setImportWeek(null)}>
           <div className="sheet tall" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <div className="sheet-grip" />
             <div className="sheet-head">
@@ -245,7 +246,7 @@ export default function App() {
               }}
             />
           </div>
-        </div>
+        </SheetBackdrop>
       )}
 
       {editing && (

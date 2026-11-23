@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SheetBackdrop from './SheetBackdrop';
 import type { Payslip, Settings, Shift, Workplace } from '../types';
 import { summarize } from '../lib/pay';
 import { parsePayslip, payslipMismatch, weekMoney } from '../lib/payslip';
@@ -136,7 +137,7 @@ export default function PayslipSheet({ weekStart, existing, existingCash, shifts
   };
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <SheetBackdrop onClose={onClose}>
       <div className="sheet tall" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="sheet-grip" />
         <div className="sheet-head">
@@ -279,6 +280,6 @@ export default function PayslipSheet({ weekStart, existing, existingCash, shifts
           </button>
         </div>
       </div>
-    </div>
+    </SheetBackdrop>
   );
 }

@@ -1,24 +1,9 @@
 import type { Settings, Shift, Source, WeekMeta, Workplace } from '../types';
-import { cashPaid, payslipMismatch, weekMoney } from '../lib/payslip';
+import { payslipMismatch, weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { WEEKDAY_SHORT, dayOfWeek, fmtCash, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
 import { PlusIcon, SwapIcon, ClockIcon } from './Icons';
-
-type DayType = 'weekday' | 'saturday' | 'sunday' | 'publicHoliday' | 'message';
-const DAY_TYPES: DayType[] = ['weekday', 'saturday', 'sunday', 'publicHoliday', 'message'];
-const DAY_TYPE_LABEL: Record<DayType, string> = {
-  weekday: 'Weekdays',
-  saturday: 'Saturday',
-  sunday: 'Sunday',
-  publicHoliday: 'Public holiday',
-  message: 'Message rosters',
-};
-function dayType(shift: Shift): DayType {
-  if (shift.publicHoliday) return 'publicHoliday';
-  const d = dayOfWeek(shift.date);
-  return d === 6 ? 'saturday' : d === 0 ? 'sunday' : 'weekday';
-}
 
 export const SOURCE_LABEL: Record<Source, string> = { tanda: 'Tanda', message: 'Message', manual: 'Manual' };
 
@@ -40,9 +25,19 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
   // Before the payslip arrives: what's been entered, with estimated tax. After: the payslip's figures
   const money = weekMoney(sum, weekMeta, settings.taxMode);
   const fromPayslip = money.fromPayslip;
-  const taxable = money.tandaGross;
-  const superAmt = weekMeta?.payslip?.super ?? taxable * settings.superRate;
   const multiWp = workplaces.length > 1;
+  // Paid hours for the Tanda part (payslip hours once it's added) and for cash shifts
+  let appTandaMinutes = 0;
+  let cashMinutes = 0;
+  for (const sh of shifts) {
+    const wp = workplaceFor(sh, workplaces);
+    if (!wp) continue;
+    const c = calcShift(sh, wp, 'effective');
+    if (isUntaxed(sh)) cashMinutes += c.workedMinutes;
+    else appTandaMinutes += c.workedMinutes;
+  }
+  const tandaHours = weekMeta?.payslip?.hours ?? appTandaMinutes / 60;
+  const cashHours = cashMinutes / 60;
   // Time at work, clock-in to clock-out with breaks included: worked shifts, and what's still rostered
   let workedSpan = 0;
   let workedCount = 0;
@@ -177,83 +172,26 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
 
       {sum.gross > 0 && (
         <section className="card">
-          <div className="card-title">Pay by day</div>
-          {workplaces
-            .filter((wp) => sum.byWorkplace[wp.id])
-            .map((wp) => {
-              const part = sum.byWorkplace[wp.id];
-              // Each shift's full pay (incl. laundry, missed breaks, Tanda's figure) goes under its day type,
-              // so the weekday line can be compared with Tanda's weekday total directly
-              const groups = new Map<DayType, { shifts: number; worked: number; minutes: number; pay: number }>();
-              for (const sh of shifts) {
-                if (workplaceFor(sh, workplaces)?.id !== wp.id) continue;
-                const c = calcShift(sh, wp, 'effective');
-                // Message rosters are paid flat, so they get their own line instead of a day type
-                const key = c.flat ? 'message' : dayType(sh);
-                const g = groups.get(key) ?? { shifts: 0, worked: 0, minutes: 0, pay: 0 };
-                g.shifts++;
-                if (c.usedActual) g.worked++;
-                g.minutes += c.workedMinutes;
-                g.pay += c.pay;
-                groups.set(key, g);
-              }
-              return (
-                <div key={wp.id} className="stack-sm">
-                  {multiWp && (
-                    <div className="wp-subhead">
-                      <span className="wp-dot" style={{ background: wp.color }} />
-                      <b>{wp.name}</b>
-                      <span className="muted small">{fmtDuration(part.workedMinutes)}</span>
-                      <b className="right">{fmtMoney(part.gross)}</b>
-                    </div>
-                  )}
-                  <ul className="breakdown">
-                    {DAY_TYPES.filter((d) => groups.has(d)).map((d) => {
-                      const g = groups.get(d)!;
-                      return (
-                        <li key={d}>
-                          <span>
-                            {DAY_TYPE_LABEL[d]}{' '}
-                            <span className="muted">
-                              {d === 'message' ? 'flat rate, no tax' : `×${wp.multipliers[d]}`} · {g.shifts} shift{g.shifts === 1 ? '' : 's'}
-                              {g.worked < g.shifts && ` (${g.shifts - g.worked} rostered)`}
-                            </span>
-                          </span>
-                          <span>{+(g.minutes / 60).toFixed(2)} hrs</span>
-                          <b>{d === 'message' ? fmtCash(cashPaid(g.pay)) : fmtMoney(g.pay)}</b>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <p className="small muted">
-                    {multiWp ? '' : `${wp.name} · `}
-                    {wp.level ? `${wp.level} · ` : ''}
-                    {fmtMoney(wp.baseRate)}/h. Totals include laundry and missed breaks, and use Tanda's amount for Tanda shifts. Tap a shift
-                    to see its full working.
-                  </p>
-                </div>
-              );
-            })}
-          <ul className="breakdown totals">
-            {money.fromPayslip && Math.abs(money.diff) >= 0.01 && (
+          <div className="card-title">This week before tax</div>
+          <ul className="breakdown pay-split">
+            <li>
+              <span>Tanda pay</span>
+              <span>{+tandaHours.toFixed(2)} hrs</span>
+              <b>{fmtMoney(money.tandaGross)}</b>
+            </li>
+            {cashHours > 0 && (
               <li>
-                <span>
-                  Payslip vs app <span className="muted">Tanda pay on the payslip is {money.diff > 0 ? 'more' : 'less'} than the shifts above</span>
-                </span>
-                <span />
-                <b className="mismatch">
-                  {money.diff > 0 ? '+' : '−'}
-                  {fmtMoney(Math.abs(money.diff))}
-                </b>
+                <span>Cash shifts</span>
+                <span>{+cashHours.toFixed(2)} hrs</span>
+                <b>{fmtCash(money.cash)}</b>
               </li>
             )}
             <li className="total">
-              <span>Total before tax{money.fromPayslip ? ' (payslip + cash)' : ''}</span>
+              <span>Total</span>
               <span />
               <b>{fmtMoney(money.gross)}</b>
             </li>
           </ul>
-          <p className="small muted">Super (paid separately by your employer) ≈ {fmtMoney(superAmt)}</p>
         </section>
       )}
     </div>

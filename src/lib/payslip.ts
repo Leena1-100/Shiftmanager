@@ -1,0 +1,122 @@
+import type { Payslip, TaxMode, WeekMeta } from '../types';
+import { taxableGross, type WeekSummary } from './pay';
+import { weeklyWithholding } from './tax';
+import { makeISO } from './time';
+
+const MONTHS: Record<string, number> = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+};
+
+/** Dollar amounts always have cents on a payslip, which keeps hours and dates out */
+const MONEY_RE = /-?\$?\s?\d{1,3}(?:,\d{3})*\.\d{2}(?!\d)/g;
+
+const money = (s: string) => Number(s.replace(/[$,\s]/g, ''));
+
+const LABELS: { key: 'gross' | 'tax' | 'net' | 'super'; re: RegExp; skip?: RegExp }[] = [
+  { key: 'gross', re: /gross(?:\s+(?:pay|earnings|wages|income|amount))?|total\s+earnings|total\s+pay\b/i, skip: /ytd\s*gross/i },
+  { key: 'tax', re: /payg|tax\s*(?:withheld|deducted)|withholding|income\s+tax|^\s*tax\b/i, skip: /taxable|pre-?tax|after\s+tax/i },
+  { key: 'net', re: /net\s*(?:pay|amount|wages|income|payment)?|take[\s-]*home|amount\s+paid|paid\s+to\s+(?:bank|account)/i },
+  { key: 'super', re: /super(?:annuation)?|\bsg\b|guarantee/i },
+];
+
+/** Dates in the forms payslips use: 17/11/2026, 17-11-2026, 2026-11-17, 17 Nov 2026 */
+function datesIn(line: string): string[] {
+  const out: { at: number; iso: string }[] = [];
+  for (const m of line.matchAll(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g)) out.push({ at: m.index!, iso: makeISO(+m[1], +m[2], +m[3]) });
+  for (const m of line.matchAll(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b/g)) {
+    const y = m[3].length === 2 ? 2000 + +m[3] : +m[3];
+    out.push({ at: m.index!, iso: makeISO(y, +m[2], +m[1]) });
+  }
+  for (const m of line.matchAll(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(\d{4})\b/gi)) {
+    out.push({ at: m.index!, iso: makeISO(+m[3], MONTHS[m[2].toLowerCase()], +m[1]) });
+  }
+  return out.sort((a, b) => a.at - b.at).map((d) => d.iso);
+}
+
+/**
+ * Read the numbers off a payslip (pasted text or OCR of a screenshot). Each figure is the first
+ * amount after its label on the same line, or on the next line when the payslip is laid out as a
+ * table. With "This period" and "YTD" columns, the first amount is this period's.
+ */
+export function parsePayslip(text: string): Partial<Payslip> {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const found: Partial<Payslip> = {};
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    for (const { key, re, skip } of LABELS) {
+      if (found[key] !== undefined || skip?.test(line)) continue;
+      const m = re.exec(line);
+      if (!m) continue;
+      const after = line.slice(m.index + m[0].length);
+      const amounts = after.match(MONEY_RE) ?? (lines[i + 1] && !LABELS.some((l) => l.re.test(lines[i + 1])) ? lines[i + 1].match(MONEY_RE) : null);
+      if (amounts) found[key] = Math.abs(money(amounts[0]));
+    }
+    if (/pay\s*date|payment\s+date|paid\s+on|date\s+paid/i.test(line) && !found.payDate) {
+      const [d] = datesIn(line);
+      if (d) found.payDate = d;
+    }
+    if (/period|week\s+(?:ending|starting)|from|to/i.test(line) && !found.periodStart) {
+      const ds = datesIn(line);
+      if (ds.length >= 2) [found.periodStart, found.periodEnd] = ds;
+      else if (ds.length === 1 && /ending|end/i.test(line)) found.periodEnd = ds[0];
+    }
+  }
+
+  // Hours: a "Total hours" line wins; otherwise the first "<n> hours" / "Hours <n>" on an earnings line
+  const HOURS = '(\\d{1,3}(?:\\.\\d{1,2})?)(?![\\d.])';
+  const total = lines.map((l) => new RegExp(`total\\s+(?:hours|hrs)(?:\\s+worked)?\\s*[:\\-]?\\s*${HOURS}`, 'i').exec(l)).find(Boolean);
+  const anyHours = lines
+    .map((l) => new RegExp(`(?:hours|hrs)(?:\\s+worked)?\\s*[:\\-]?\\s*${HOURS}|${HOURS}\\s*(?:hours|hrs)\\b`, 'i').exec(l))
+    .find(Boolean);
+  const h = total ?? anyHours;
+  if (h) found.hours = Number(h[1] ?? h[2]);
+
+  if (!found.periodStart && !found.periodEnd) {
+    // No labelled period: the first two dates that aren't the pay date
+    const ds = lines.flatMap(datesIn).filter((d) => d !== found.payDate);
+    if (ds.length >= 2) [found.periodStart, found.periodEnd] = ds;
+  }
+  if (found.net === undefined && found.gross !== undefined && found.tax !== undefined) {
+    found.net = Math.round((found.gross - found.tax) * 100) / 100;
+  }
+  return found;
+}
+
+export interface WeekMoney {
+  /** Week pay before tax: payslip gross (or the app's Tanda total) plus cash shifts */
+  gross: number;
+  /** Tanda (taxed) part of the week */
+  tandaGross: number;
+  tax: number;
+  /** Take-home: payslip net (or Tanda minus estimated tax) plus cash shifts */
+  net: number;
+  cash: number;
+  fromPayslip: boolean;
+  /** The app's own Tanda total, to compare with the payslip */
+  appTanda: number;
+  /** Payslip gross minus the app's Tanda total */
+  diff: number;
+}
+
+/** A week's money, using the payslip's actual figures for the Tanda part when there is one */
+export function weekMoney(sum: WeekSummary, meta: WeekMeta | undefined, taxMode: TaxMode): WeekMoney {
+  const appTanda = taxableGross(sum);
+  const cash = Math.round((sum.gross - appTanda) * 100) / 100;
+  const p = meta?.payslip;
+  if (!p) {
+    const tax = weeklyWithholding(appTanda, taxMode);
+    return { gross: sum.gross, tandaGross: appTanda, tax, net: sum.gross - tax, cash, fromPayslip: false, appTanda, diff: 0 };
+  }
+  const net = p.net ?? p.gross - p.tax;
+  return {
+    gross: Math.round((p.gross + cash) * 100) / 100,
+    tandaGross: p.gross,
+    tax: p.tax,
+    net: Math.round((net + cash) * 100) / 100,
+    cash,
+    fromPayslip: true,
+    appTanda,
+    diff: Math.round((p.gross - appTanda) * 100) / 100,
+  };
+}

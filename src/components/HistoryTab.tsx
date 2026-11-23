@@ -1,12 +1,14 @@
 import type { AppState, WeekMeta } from '../types';
-import { summarize, taxableGross } from '../lib/pay';
-import { TAX_FREE_THRESHOLD, weeklyWithholding } from '../lib/tax';
+import { summarize } from '../lib/pay';
+import { weekMoney } from '../lib/payslip';
+import { TAX_FREE_THRESHOLD } from '../lib/tax';
 import { addDays, fmtDateShort, fmtDuration, fmtMoney, todayISO, weekStartOf } from '../lib/time';
 import { CheckIcon } from './Icons';
 
 interface Props {
   state: AppState;
   onUpdateWeek: (week: string, meta: WeekMeta) => void;
+  onOpenPayslip: (week: string) => void;
   onOpenWeek: (week: string) => void;
 }
 
@@ -18,7 +20,7 @@ function fyStart(iso: string): string {
   return iso.slice(5) >= '07-01' ? `${y}-07-01` : `${y - 1}-07-01`;
 }
 
-export default function HistoryTab({ state, onUpdateWeek, onOpenWeek }: Props) {
+export default function HistoryTab({ state, onUpdateWeek, onOpenPayslip, onOpenWeek }: Props) {
   const { settings, shifts, weeks: metas } = state;
   const today = todayISO();
 
@@ -31,13 +33,15 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenWeek }: Props) {
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([start, list]) => {
       const sum = summarize(list, state.workplaces, 'effective');
-      const tax = weeklyWithholding(taxableGross(sum), settings.taxMode);
-      return { start, sum, tax, net: sum.gross - tax, meta: metas[start] ?? {} };
+      const meta = metas[start] ?? {};
+      // Payslip figures replace the estimate where there is one
+      const money = weekMoney(sum, meta, settings.taxMode);
+      return { start, sum, money, gross: money.gross, tax: money.tax, net: money.net, meta };
     });
 
   const fy = fyStart(today);
   const fyWeeks = weeks.filter((w) => w.start >= fy && w.start <= today);
-  const fyGross = fyWeeks.reduce((a, w) => a + w.sum.gross, 0);
+  const fyGross = fyWeeks.reduce((a, w) => a + w.gross, 0);
   const fyTax = fyWeeks.reduce((a, w) => a + w.tax, 0);
   const monthKey = today.slice(0, 7);
   const monthName = MONTH_LONG[Number(monthKey.slice(5)) - 1];
@@ -145,11 +149,32 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenWeek }: Props) {
                     · {w.sum.shifts} shift{w.sum.shifts === 1 ? '' : 's'} · {fmtDuration(w.sum.workedMinutes)}
                   </span>
                 </span>
-                <b>{fmtMoney(w.sum.gross)}</b>
+                <b>{fmtMoney(w.gross)}</b>
               </button>
               <div className="week-body">
+                {w.money.fromPayslip ? (
+                  <button className="payslip-row light" onClick={() => onOpenPayslip(w.start)}>
+                    <span>
+                      ✓ Payslip: gross {fmtMoney(w.money.tandaGross)} · tax −{fmtMoney(w.money.tax)}
+                      {w.money.cash > 0 && ` · cash ${fmtMoney(w.money.cash)}`}
+                      {Math.abs(w.money.diff) >= 0.01 && (
+                        <span className="mismatch">
+                          {' '}
+                          ({w.money.diff > 0 ? '+' : '−'}
+                          {fmtMoney(Math.abs(w.money.diff))} vs app)
+                        </span>
+                      )}
+                    </span>
+                    <span className="payslip-edit">Edit</span>
+                  </button>
+                ) : (
+                  <button className="payslip-row light" onClick={() => onOpenPayslip(w.start)}>
+                    <span>No payslip yet</span>
+                    <span className="payslip-edit">Add payslip</span>
+                  </button>
+                )}
                 <span className="small muted">
-                  Est. take-home {fmtMoney(w.net)}
+                  {w.money.fromPayslip ? 'Take-home' : 'Est. take-home'} {fmtMoney(w.net)}
                   {w.sum.actualCount < w.sum.shifts && ` · actuals logged ${w.sum.actualCount}/${w.sum.shifts}`}
                 </span>
                 <div className="inline">

@@ -5,6 +5,7 @@ import { mergeShifts, swapAlt } from './merge';
 import { weeklyWithholding, annualTax } from './tax';
 import { FAST_FOOD_BREAK_TIERS as DEFAULT_BREAK_TIERS, LEGACY_BREAK_TIERS, applyAward, awardMinimumRate, newWorkplace } from './defaults';
 import { reviveState } from './storage';
+import { parsePayslip, weekMoney } from './payslip';
 import type { Shift } from '../types';
 
 const WEEK = '2026-10-26'; // Monday
@@ -530,5 +531,66 @@ describe('upcoming Tanda days and misread hours', () => {
     const st = reviveState({ version: 2, onboarded: true, workplaces: [wp], settings: {}, weeks: {},
       shifts: [{ ...shift, date: '2026-11-05', tandaPay: { hours: 45, pay: 126.43 } }] });
     expect(st.shifts[0].tandaPay?.hours).toBe(4.5);
+  });
+});
+
+describe('payslips', () => {
+  it('reads a table payslip with this-period and YTD columns', () => {
+    const text = `Soul Origin Queens Plaza
+Payslip
+Pay Period: 19/10/2026 - 25/10/2026
+Payment Date: 26/10/2026
+Description Hours Rate This Period YTD
+Ordinary Hours 27.08 27.81 753.11 9,840.22
+Laundry Allowance 4 1.28 5.12 66.56
+Gross Pay $776.94 $10,155.40
+PAYG Tax $80.00 $1,020.00
+Net Pay $696.94 $9,135.40
+Superannuation (SG 12%) $93.23 $1,218.65
+Total Hours 27.08`;
+    expect(parsePayslip(text)).toEqual({
+      gross: 776.94,
+      tax: 80,
+      net: 696.94,
+      super: 93.23,
+      hours: 27.08,
+      periodStart: '2026-10-19',
+      periodEnd: '2026-10-25',
+      payDate: '2026-10-26',
+    });
+  });
+
+  it('reads amounts on the line after their labels (OCR of a screenshot)', () => {
+    const text = `Period
+17 Nov 2026 to 23 Nov 2026
+Gross
+662.94
+Tax withheld
+60.00
+Net pay
+602.94`;
+    expect(parsePayslip(text)).toMatchObject({
+      gross: 662.94, tax: 60, net: 602.94, periodStart: '2026-11-17', periodEnd: '2026-11-23',
+    });
+  });
+
+  it('works out net pay when only gross and tax are shown', () => {
+    expect(parsePayslip('Gross earnings 500.00\nPAYG withholding 31.00')).toMatchObject({ gross: 500, tax: 31, net: 469 });
+  });
+
+  it('a week with a payslip uses its actual tax and net, plus cash shifts', () => {
+    const wp = { ...newWorkplace(0), id: 'w', laundryAllowance: true };
+    const shifts: Shift[] = [
+      { id: 'a', date: '2026-10-19', start: hm(7, 18), end: hm(16), source: 'tanda', sources: ['tanda'], workplaceId: 'w',
+        actual: { start: hm(7, 18), end: hm(16), paidBreak: 10, unpaidBreak: 30 }, tandaPay: { hours: 8.2, pay: 229.32 } },
+      { id: 'b', date: '2026-10-24', start: hm(8, 30), end: hm(16), source: 'message', sources: ['message'], workplaceId: 'w',
+        actual: { start: hm(8, 30), end: hm(16), paidBreak: 10, unpaidBreak: 30 } },
+    ];
+    const sum = summarize(shifts, [wp], 'effective');
+    const est = weekMoney(sum, undefined, 'resident-tft');
+    expect(est).toMatchObject({ fromPayslip: false, tandaGross: 229.32, cash: 189 });
+
+    const actual = weekMoney(sum, { payslip: { gross: 230, tax: 0, net: 230 } }, 'resident-tft');
+    expect(actual).toMatchObject({ fromPayslip: true, gross: 419, tax: 0, net: 419, cash: 189, appTanda: 229.32, diff: 0.68 });
   });
 });

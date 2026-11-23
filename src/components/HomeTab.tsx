@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { Settings, Shift, Source, Workplace } from '../types';
+import type { Settings, Shift, Source, WeekMeta, Workplace } from '../types';
+import { weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, taxableGross, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { taxFreeRoom, weeklyWithholding, WEEKLY_TAX_FREE } from '../lib/tax';
@@ -28,20 +29,26 @@ interface Props {
   workplaces: Workplace[];
   shifts: Shift[];
   weekStart: string;
+  weekMeta?: WeekMeta;
+  onOpenPayslip: () => void;
   onEdit: (s: Shift) => void;
   onAdd: () => void;
   onSave: (s: Shift) => void;
   onGoImport: () => void;
 }
 
-export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, onSave, onGoImport }: Props) {
+export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpenPayslip, onEdit, onAdd, onSave, onGoImport }: Props) {
   const [mode, setMode] = useState<'planned' | 'effective'>('effective');
   const planned = summarize(shifts, workplaces, 'planned');
   const effective = summarize(shifts, workplaces, 'effective');
   const sum = mode === 'planned' ? planned : effective;
   const taxable = taxableGross(sum);
-  const tax = weeklyWithholding(taxable, settings.taxMode);
-  const net = sum.gross - tax;
+  // With a payslip for the week, its actual figures replace the estimate for the Tanda part
+  const money = mode === 'effective' ? weekMoney(sum, weekMeta, settings.taxMode) : null;
+  const payslip = money?.fromPayslip ? money : null;
+  const tax = payslip ? payslip.tax : weeklyWithholding(taxable, settings.taxMode);
+  const net = payslip ? payslip.net : sum.gross - tax;
+  const shownGross = payslip ? payslip.gross : sum.gross;
   const room = taxFreeRoom(taxable, settings.taxMode);
   const diff = effective.gross - planned.gross;
   const superAmt = taxable * settings.superRate;
@@ -63,14 +70,14 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
           </button>
         </div>
         <div className="hero-label">This week's pay (before tax)</div>
-        <div className="hero-amount">{fmtMoney(sum.gross)}</div>
+        <div className="hero-amount">{fmtMoney(shownGross)}</div>
         <div className="hero-rows">
           <div>
-            <span>Est. tax (PAYG)</span>
+            <span>{payslip ? 'Tax (payslip)' : 'Est. tax (PAYG)'}</span>
             <b>-{fmtMoney(tax)}</b>
           </div>
           <div>
-            <span>Est. take-home</span>
+            <span>{payslip ? 'Take-home (payslip + cash)' : 'Est. take-home'}</span>
             <b>{fmtMoney(net)}</b>
           </div>
         </div>
@@ -91,6 +98,26 @@ export default function HomeTab({ settings, workplaces, shifts, onEdit, onAdd, o
               </small>
             </div>
           </div>
+        )}
+        {mode === 'effective' && sum.shifts > 0 && (
+          <button className="payslip-row" onClick={onOpenPayslip}>
+            {payslip ? (
+              <>
+                <span>
+                  ✓ Payslip {fmtMoney(payslip.tandaGross)}
+                  {Math.abs(payslip.diff) < 0.01
+                    ? ' · matches the app'
+                    : ` · ${payslip.diff > 0 ? '+' : '−'}${fmtMoney(Math.abs(payslip.diff))} vs app`}
+                </span>
+                <span className="payslip-edit">Edit</span>
+              </>
+            ) : (
+              <>
+                <span>Got this week's payslip?</span>
+                <span className="payslip-edit">Add payslip</span>
+              </>
+            )}
+          </button>
         )}
         {sum.untaxedGross > 0 && (
           <div className="hero-note">

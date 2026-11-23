@@ -112,10 +112,26 @@ export interface Settings {
   mergePriority: 'tanda' | 'message';
 }
 
+/** Figures from the Tanda payslip for a pay week */
+export interface Payslip {
+  /** Gross pay this period */
+  gross: number;
+  /** PAYG tax withheld this period */
+  tax: number;
+  /** Net pay paid to the bank (gross - tax - other deductions) */
+  net?: number;
+  super?: number;
+  hours?: number;
+  periodStart?: string;
+  periodEnd?: string;
+  payDate?: string;
+}
+
 export interface WeekMeta {
   received?: boolean;
   receivedAmount?: number;
   note?: string;
+  payslip?: Payslip;
 }
 
 export interface AppState {

@@ -7,6 +7,7 @@ import { addDays, fmtDateShort, todayISO, weekStartOf } from './lib/time';
 import { HomeIcon, CalendarIcon, WalletIcon, GearIcon, ChevronLeft, ChevronRight, CloseIcon } from './components/Icons';
 import HomeTab from './components/HomeTab';
 import ImportTab from './components/ImportTab';
+import PayslipSheet from './components/PayslipSheet';
 import CalendarTab from './components/CalendarTab';
 import HistoryTab from './components/HistoryTab';
 import SettingsTab from './components/SettingsTab';
@@ -24,6 +25,8 @@ export default function App() {
   const [editing, setEditing] = useState<{ shift: Shift | null; date: string } | null>(null);
   // Week whose roster is being imported (opens the import sheet)
   const [importWeek, setImportWeek] = useState<string | null>(null);
+  // Week whose payslip is being added (opens the payslip sheet)
+  const [payslipWeek, setPayslipWeek] = useState<string | null>(null);
   // Bumped after restoring/resetting so the settings inputs re-render with the new values
   const [resetKey, setResetKey] = useState(0);
   const replaceState = (next: typeof state) => {
@@ -131,6 +134,8 @@ export default function App() {
             workplaces={state.workplaces}
             shifts={weekShifts}
             weekStart={weekStart}
+            weekMeta={state.weeks[weekStart]}
+            onOpenPayslip={() => setPayslipWeek(weekStart)}
             onEdit={(s) => setEditing({ shift: s, date: s.date })}
             onAdd={() => setEditing({ shift: null, date: weekStart })}
             onSave={saveShift}
@@ -149,6 +154,7 @@ export default function App() {
           <HistoryTab
             state={state}
             onUpdateWeek={updateWeek}
+            onOpenPayslip={setPayslipWeek}
             onOpenWeek={(w) => {
               setWeekStart(w);
               setTab('home');
@@ -183,6 +189,34 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      {payslipWeek && (
+        <PayslipSheet
+          key={payslipWeek}
+          weekStart={payslipWeek}
+          existing={state.weeks[payslipWeek]?.payslip}
+          shifts={state.shifts}
+          workplaces={state.workplaces}
+          settings={settings}
+          onSave={(week, payslip) => {
+            // Saving to another week (the payslip's own period) moves it there
+            setState((st) => {
+              const weeks = { ...st.weeks };
+              if (week !== payslipWeek && weeks[payslipWeek]?.payslip) {
+                weeks[payslipWeek] = { ...weeks[payslipWeek], payslip: undefined };
+              }
+              weeks[week] = { ...weeks[week], payslip };
+              return { ...st, weeks };
+            });
+            setPayslipWeek(null);
+          }}
+          onDelete={(week) => {
+            updateWeek(week, { payslip: undefined });
+            setPayslipWeek(null);
+          }}
+          onClose={() => setPayslipWeek(null)}
+        />
+      )}
 
       {importWeek && (
         <div className="sheet-backdrop" onClick={() => setImportWeek(null)}>

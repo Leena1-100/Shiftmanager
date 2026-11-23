@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import SheetBackdrop from './SheetBackdrop';
-import type { AppState, Settings, TaxMode, Workplace } from '../types';
+import type { AppState, Workplace } from '../types';
 import { newWorkplace } from '../lib/defaults';
-import { TAX_MODE_LABEL } from '../lib/tax';
 import { emptyState, reviveState } from '../lib/storage';
-import { WEEKDAY_SHORT, todayISO } from '../lib/time';
-import { SOURCE_LABEL } from './HomeTab';
+import { todayISO } from '../lib/time';
 import { WorkplaceCard } from './Onboarding';
 import WorkplaceForm, { workplaceIsValid } from './WorkplaceForm';
 import { PlusIcon } from './Icons';
@@ -15,20 +13,13 @@ import type { CloudSync } from '../lib/useCloudSync';
 
 interface Props {
   state: AppState;
-  onUpdate: (patch: Partial<Settings>) => void;
   onSaveWorkplace: (wp: Workplace) => void;
   onDeleteWorkplace: (id: string) => void;
   onReplaceState: (s: AppState) => void;
   cloud: CloudSync;
 }
 
-const numOr = (v: string, fallback: number) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
-};
-
-export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDeleteWorkplace, onReplaceState, cloud }: Props) {
-  const { settings } = state;
+export default function SettingsTab({ state, onSaveWorkplace, onDeleteWorkplace, onReplaceState, cloud }: Props) {
   const [editing, setEditing] = useState<Workplace | null>(null);
   const isExisting = !!editing && state.workplaces.some((w) => w.id === editing.id);
 
@@ -73,51 +64,6 @@ export default function SettingsTab({ state, onUpdate, onSaveWorkplace, onDelete
       <section className="card">
         <div className="card-title">Cloud save</div>
         <CloudSave cloud={cloud} />
-      </section>
-
-      <section className="card">
-        <div className="card-title">Tax</div>
-        <div className="radio-list">
-          {(Object.keys(TAX_MODE_LABEL) as TaxMode[]).map((m) => (
-            <label key={m} className="check">
-              <input type="radio" name="tax" checked={settings.taxMode === m} onChange={() => onUpdate({ taxMode: m })} />
-              {TAX_MODE_LABEL[m]}
-            </label>
-          ))}
-        </div>
-        <label className="field">
-          <span>Superannuation (%)</span>
-          <input
-            inputMode="decimal"
-            defaultValue={settings.superRate * 100}
-            onChange={(e) => onUpdate({ superRate: numOr(e.target.value, settings.superRate * 100) / 100 })}
-          />
-        </label>
-        <p className="small muted">Tax is an estimate using 2026–27 rates and may differ from actual withholding by a few dollars.</p>
-      </section>
-
-      <section className="card">
-        <div className="card-title">Pay week &amp; merging</div>
-        <div className="field">
-          <span>Pay week starts on</span>
-          <div className="seg small">
-            {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-              <button key={d} className={settings.weekStartDay === d ? 'on' : ''} onClick={() => onUpdate({ weekStartDay: d })}>
-                {WEEKDAY_SHORT[d]}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="field">
-          <span>When times differ on the same day, prefer</span>
-          <div className="seg small">
-            {(['message', 'tanda'] as const).map((p) => (
-              <button key={p} className={settings.mergePriority === p ? 'on' : ''} onClick={() => onUpdate({ mergePriority: p })}>
-                {SOURCE_LABEL[p]}
-              </button>
-            ))}
-          </div>
-        </div>
       </section>
 
       <section className="card">

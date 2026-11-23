@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Settings, Shift, WeekMeta, Workplace } from './types';
+import type { Shift, WeekMeta, Workplace } from './types';
 import { usePersistentState } from './lib/storage';
 import { useCloudSync } from './lib/useCloudSync';
 import { useUpdateCheck } from './lib/useUpdateCheck';
@@ -53,10 +53,6 @@ export default function App() {
     });
   const deleteShift = (id: string) => setState((st) => ({ ...st, shifts: st.shifts.filter((s) => s.id !== id) }));
   const setShifts = (shifts: Shift[]) => setState((st) => ({ ...st, shifts }));
-  const updateSettings = (patch: Partial<Settings>) => {
-    setState((st) => ({ ...st, settings: { ...st.settings, ...patch } }));
-    if (patch.weekStartDay !== undefined) setWeekStart((w) => weekStartOf(w, patch.weekStartDay!));
-  };
   const updateWeek = (key: string, meta: WeekMeta) =>
     setState((st) => ({ ...st, weeks: { ...st.weeks, [key]: { ...st.weeks[key], ...meta } } }));
   const saveWorkplace = (wp: Workplace) =>
@@ -165,7 +161,6 @@ export default function App() {
           <SettingsTab
             key={resetKey}
             state={state}
-            onUpdate={updateSettings}
             onSaveWorkplace={saveWorkplace}
             onDeleteWorkplace={deleteWorkplace}
             onReplaceState={replaceState}

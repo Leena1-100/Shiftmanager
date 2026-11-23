@@ -259,7 +259,6 @@ function ShiftCard({
         <b>{fmtMoney(eff.pay)}</b>
         <span className="muted small">{fmtDuration(eff.workedMinutes)}</span>
         {eff.fromTanda && <span className="badge tanda">Tanda pay</span>}
-        {isUntaxed(shift) && <span className="untaxed">Flat rate · no tax</span>}
       </div>
     </article>
   );

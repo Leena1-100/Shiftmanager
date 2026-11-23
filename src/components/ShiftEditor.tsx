@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import SheetBackdrop from './SheetBackdrop';
 import type { Settings, Shift, Workplace } from '../types';
-import { breaksFor, calcShift, isMessageOnly } from '../lib/pay';
+import { breaksFor, calcShift } from '../lib/pay';
 import { newId } from '../lib/merge';
 import ConfirmButton from './ConfirmButton';
 import PayBreakdown from './PayBreakdown';
-import { messageRate } from '../lib/defaults';
 import { fmtDateLong, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM, todayISO } from '../lib/time';
 
 interface Props {
@@ -36,7 +35,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
     start: fmtTime(a?.start ?? shift?.start ?? 9 * 60),
     end: fmtTime(a?.end ?? shift?.end ?? 15 * 60),
     unpaid: a ? String(a.unpaidBreak) : shift?.unpaidBreak !== undefined ? String(shift.unpaidBreak) : '',
-    paid: a ? String(a.paidBreak) : '',
+    paid: a ? String(a.paidBreak) : shift?.paidBreak !== undefined ? String(shift.paidBreak) : '',
   };
   const [date, setDate] = useState(init.date);
   const [start, setStart] = useState(init.start);
@@ -45,7 +44,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
   const [paid, setPaid] = useState(init.paid);
   const [ph, setPh] = useState(!!shift?.publicHoliday);
   const [note, setNote] = useState(shift?.note ?? '');
-  const [applyTax, setApplyTax] = useState(!!shift?.applyTax);
+  const applyTax = !!shift?.applyTax;
 
   const future = date > todayISO();
   const ps = parseHHMM(start);
@@ -74,7 +73,13 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
     };
     if (future) {
       // Upcoming: the times are the roster
-      return { ...base, start: s0, end: e0, unpaidBreak: unpaid.trim() === '' ? undefined : unpaidMin };
+      return {
+        ...base,
+        start: s0,
+        end: e0,
+        unpaidBreak: unpaid.trim() === '' ? undefined : unpaidMin,
+        paidBreak: paid.trim() === '' ? undefined : paidMin,
+      };
     }
     // Worked: keep the original roster for reference, the times entered are what was worked
     return {
@@ -82,6 +87,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
       start: shift?.start ?? s0,
       end: shift?.end ?? e0,
       unpaidBreak: shift ? shift.unpaidBreak : unpaid.trim() === '' ? undefined : unpaidMin,
+      paidBreak: shift?.paidBreak,
       actual: { start: s0, end: e0, unpaidBreak: unpaidMin, paidBreak: paidMin },
       tandaPay: timesUnchanged ? shift?.tandaPay : undefined,
     };
@@ -129,12 +135,10 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
               <span>Unpaid break (min)</span>
               <input inputMode="numeric" placeholder={`Auto ${rule.unpaidMinutes}`} value={unpaid} onChange={(e) => setUnpaid(e.target.value)} />
             </label>
-            {!future && (
-              <label className="field">
-                <span>Paid break (min)</span>
-                <input inputMode="numeric" placeholder={`Auto ${rule.paidMinutes}`} value={paid} onChange={(e) => setPaid(e.target.value)} />
-              </label>
-            )}
+            <label className="field">
+              <span>Paid break (min)</span>
+              <input inputMode="numeric" placeholder={`Auto ${rule.paidMinutes}`} value={paid} onChange={(e) => setPaid(e.target.value)} />
+            </label>
           </div>
           <label className="check">
             <input type="checkbox" checked={ph} onChange={(e) => setPh(e.target.checked)} />
@@ -152,20 +156,6 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
         </div>
 
         {draft && <PayBreakdown shift={draft} wp={wp} workplaces={workplaces} allShifts={allShifts} settings={settings} />}
-
-        {shift && isMessageOnly(shift) && (
-          <div className="tax-toggle">
-            <div>
-              <b>{applyTax ? 'Award pay with tax & super' : 'Flat rate, no tax or super'}</b>
-              <p className="small muted">
-                {applyTax ? 'Weekend rates, laundry and tax & super.' : `Paid hours × ${fmtMoney(messageRate(wp, date, ph))}`}
-              </p>
-            </div>
-            <button type="button" className={applyTax ? 'secondary' : 'primary'} onClick={() => setApplyTax(!applyTax)}>
-              {applyTax ? 'Back to flat rate' : 'Use award pay + tax'}
-            </button>
-          </div>
-        )}
 
         <div className="sheet-actions">
           {shift && <ConfirmButton label="Delete" confirmLabel="Tap again to delete" onConfirm={() => onDelete(shift.id)} />}

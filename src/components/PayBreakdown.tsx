@@ -179,11 +179,9 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
         </div>
       </div>
 
-      <div className="bd-section">
-        <div className="bd-head">Tax &amp; super</div>
-        {untaxed ? (
-          <p className="small muted">No tax or super taken off.</p>
-        ) : (
+      {!untaxed && (
+        <div className="bd-section">
+          <div className="bd-head">Tax &amp; super</div>
           <>
             <div className="bd-row">
               <span>Est. tax (PAYG)</span>
@@ -194,12 +192,12 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
               <span>{fmtMoney(superAmt)}</span>
             </div>
           </>
-        )}
-        <div className="bd-row total">
-          <span>Est. take-home</span>
-          <b>{fmtMoney(c.pay - tax)}</b>
+          <div className="bd-row total">
+            <span>Est. take-home</span>
+            <b>{fmtMoney(c.pay - tax)}</b>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

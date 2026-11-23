@@ -93,7 +93,7 @@ export function calcShift(
     span,
     useActual ? shift.actual!.unpaidBreak : (shift.unpaidBreak ?? rule.unpaidMinutes),
   );
-  const paidBreak = useActual ? shift.actual!.paidBreak : rule.paidMinutes;
+  const paidBreak = useActual ? shift.actual!.paidBreak : (shift.paidBreak ?? rule.paidMinutes);
 
   const breakStart = start + Math.floor((span - unpaidBreak) / 2);
   const breakEnd = breakStart + unpaidBreak;

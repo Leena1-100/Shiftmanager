@@ -40,6 +40,8 @@ export interface Shift {
   sources: Source[];
   /** Unpaid break (minutes) written on the roster. When absent, the break rules decide. */
   unpaidBreak?: number;
+  /** Paid break (minutes) set for an upcoming shift. When absent, the break rules decide. */
+  paidBreak?: number;
   /** Workplace this shift belongs to */
   workplaceId?: string;
   publicHoliday?: boolean;

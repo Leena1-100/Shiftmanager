@@ -2,7 +2,6 @@ import type { Settings, Shift, Source, WeekMeta, Workplace } from '../types';
 import { payslipMismatch, weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
-import { taxFreeRoom, WEEKLY_TAX_FREE } from '../lib/tax';
 import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
 import { PlusIcon, SwapIcon, ClockIcon, CheckIcon } from './Icons';
 
@@ -42,13 +41,21 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
   const money = weekMoney(sum, weekMeta, settings.taxMode);
   const fromPayslip = money.fromPayslip;
   const taxable = money.tandaGross;
-  const room = taxFreeRoom(taxable, settings.taxMode);
   const superAmt = weekMeta?.payslip?.super ?? taxable * settings.superRate;
-  // Estimate "hours until tax" at the rate of the workplace worked most this week
-  const mainWp =
-    workplaces.find((w) => w.id === Object.entries(sum.byWorkplace).sort((a, b) => b[1].workedMinutes - a[1].workedMinutes)[0]?.[0]) ??
-    workplaces[0];
   const multiWp = workplaces.length > 1;
+  // Time at work, clock-in to clock-out with breaks included: worked shifts, and what's still rostered
+  let workedSpan = 0;
+  let workedCount = 0;
+  let rosteredSpan = 0;
+  for (const sh of shifts) {
+    const wp = workplaceFor(sh, workplaces);
+    if (!wp) continue;
+    const c = calcShift(sh, wp, 'effective');
+    if (c.usedActual) {
+      workedSpan += c.span;
+      workedCount++;
+    } else rosteredSpan += c.span;
+  }
 
   return (
     <div className="stack">
@@ -115,35 +122,15 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
         )}
       </section>
 
-      <section className="stats">
-        <Stat label="Paid time" value={fmtDuration(sum.workedMinutes)} />
-        <Stat label="Paid breaks" value={`${sum.paidBreak}m`} />
-        <Stat label="Unpaid breaks" value={`${sum.unpaidBreak}m`} />
-        <Stat label="Actuals logged" value={`${sum.actualCount}/${shifts.length}`} />
-      </section>
-
-      {room !== null && (
-        <section className="card">
-          <div className="card-title">
-            Tax-free zone <span className="muted">up to {fmtMoney(WEEKLY_TAX_FREE)}/week</span>
-          </div>
-          <div className="meter" aria-hidden="true">
-            <div style={{ width: `${Math.min(100, (taxable / WEEKLY_TAX_FREE) * 100)}%` }} />
-          </div>
-          {room > 0 ? (
-            <p className="small">
-              No tax for another {fmtMoney(room)} · about{' '}
-              <b>{fmtDuration((room / (mainWp.baseRate * mainWp.multipliers.weekday)) * 60)}</b> more at {multiWp ? `${mainWp.name}'s` : 'the'} weekday rate
-            </p>
-          ) : (
-            <p className="small">
-              You're {fmtMoney(taxable - WEEKLY_TAX_FREE)} over the tax-free zone. Tax applies to the amount above it.
-            </p>
-          )}
+      {shifts.length > 0 && (
+        <section className="worked-card">
+          <span>Hours worked (breaks included)</span>
+          <b>{fmtDuration(workedSpan)}</b>
+          <small>
+            {workedCount} shift{workedCount === 1 ? '' : 's'} worked
+            {rosteredSpan > 0 && ` · ${fmtDuration(rosteredSpan)} still rostered`}
+          </small>
         </section>
-      )}
-      {settings.taxMode === 'whm' && (
-        <p className="small muted pad">Working holiday makers have no tax-free threshold: 15% from the first dollar.</p>
       )}
 
       {(() => {
@@ -252,14 +239,6 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="stat">
-      <span>{label}</span>
-      <b>{value}</b>
-    </div>
-  );
-}
 
 function ShiftCard({
   shift,
@@ -325,7 +304,7 @@ function ShiftCard({
             <ClockIcon size={14} /> Log actual times after your shift
           </div>
         )}
-        {shift.alt && (
+        {shift.alt && shift.alt.source !== shift.source && (
           <button
             className="alt-chip"
             onClick={(e) => {

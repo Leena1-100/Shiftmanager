@@ -1940,3 +1940,25 @@ a.link {
 .hero .payslip-row .mismatch {
   color: #fff3c4;
 }
+
+/* ---------- This week: hours worked ---------- */
+.worked-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+
+.worked-card span,
+.worked-card small {
+  font-size: 13px;
+  color: var(--sub);
+}
+
+.worked-card b {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}

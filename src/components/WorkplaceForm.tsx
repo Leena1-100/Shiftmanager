@@ -82,6 +82,7 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
         </label>
       )}
 
+      {!(preset.levels.length === 1 && preset.levels[0].name === preset.name) && (
       <label className="field">
         <span>Classification level</span>
         {preset.levels.length > 0 ? (
@@ -96,6 +97,7 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
           <input value={wp.level} placeholder="e.g. Level 2, Grade 1" onChange={(e) => set({ level: e.target.value })} />
         )}
       </label>
+      )}
 
       {preset.juniorPercent && (
         <label className="field">
@@ -184,10 +186,12 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
       ) : (
         <p className="small muted">Enter the ordinary hourly rate from your payslip or agreement.</p>
       )}
-      {wp.employment === 'casual' && (
+      {wp.employment === 'casual' && !preset.casualRateIncludesLoading && (
         <p className="small muted">For casuals the rate above excludes the 25% loading. The loading is built into the casual penalty rates.</p>
       )}
 
+      {!preset.payrollOnly && (
+        <>
       <div className="field">
         <span>Rates for cash shifts</span>
         <div className="row2">
@@ -263,6 +267,8 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
             <span className="muted">/ shift</span>
           </div>
         </label>
+      )}
+        </>
       )}
 
       <details className="advanced">

@@ -183,7 +183,7 @@ export function WorkplaceCard({ wp, onClick }: { wp: Workplace; onClick: () => v
         <b>{wp.name}</b>
         <span className="small muted">
           {awardLabel(wp)}
-          {wp.level && ` · ${wp.level}`} · {EMPLOYMENT_LABEL[wp.employment]}
+          {wp.level && wp.level !== awardLabel(wp) && ` · ${wp.level}`} · {EMPLOYMENT_LABEL[wp.employment]}
         </span>
       </span>
       <span className="wp-rate">

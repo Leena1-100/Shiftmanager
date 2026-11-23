@@ -694,12 +694,14 @@ describe('cash received for the week', () => {
 });
 
 describe('higher education award', () => {
-  it('QUT casual HEW 3.1 is $43.20 an hour flat, casual by default, no laundry', () => {
+  it('QUT casual HEW 3.1 is $43.20 an hour with weekend penalties and a 3-hour minimum', () => {
     const wp = applyAward(newWorkplace(1), { award: 'higher-ed' });
     expect(wp).toMatchObject({ level: 'HEW Level 3.1', employment: 'casual', baseRate: 43.2 });
-    expect(wp.multipliers.saturday).toBe(1);
-    expect(wp.multipliers.weekday).toBe(1);
+    expect(wp.multipliers).toMatchObject({ weekday: 1, saturday: 1.5, sunday: 2, publicHoliday: 2.5 });
+    expect(wp.minEngagementMinutes).toBe(180);
     const shift: Shift = { id: 'q', date: '2026-11-25', start: hm(9), end: hm(13), source: 'manual', sources: ['manual'], workplaceId: wp.id };
     expect(calcShift(shift, wp, 'planned', '2026-11-20').pay).toBeCloseTo(172.8, 2);
+    // Saturday 2 hours: paid up to 3 hours at 150%
+    expect(calcShift({ ...shift, date: '2026-11-28', end: hm(11) }, wp, 'planned', '2026-11-20').pay).toBeCloseTo(3 * 43.2 * 1.5, 2);
   });
 });

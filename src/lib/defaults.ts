@@ -55,6 +55,10 @@ export interface AwardPreset {
   defaultEmployment?: Employment;
   /** Level rates are the casual hourly rate with the 25% loading already in */
   casualRateIncludesLoading?: boolean;
+  /** Always paid through payroll at the agreement's rates: no cash shifts, no laundry allowance */
+  payrollOnly?: boolean;
+  /** Shortest paid engagement (minutes); shorter shifts are paid up to it */
+  minEngagementMinutes?: number;
   /** Laundry allowance for employees who wash their own uniform */
   laundry?: { perShift: number; perWeekFullTime: number };
   /** Junior rate as a percentage of the adult rate */
@@ -130,16 +134,19 @@ export const AWARDS: Record<AwardId, AwardPreset> = {
     nightEnd: 0,
     breakTiers: RETAIL_BREAK_TIERS,
   },
-  // University jobs (e.g. QUT) pay from the university's enterprise agreement. The rate is the one in
-  // the job offer: QUT casual HEW Level 3.1 is $43.20 an hour with the casual loading included, so no
-  // further loading is added. Weekend penalties depend on the agreement, so they start flat and can be edited.
+  // QUT professional staff, HEW Level 3 step 1, casual: $43.20 an hour with the casual loading included
+  // (job offer), paid through payroll with tax and super. Weekend and public holiday penalties on top of
+  // that rate: Saturday 150%, Sunday 200%, public holiday 250%. 3-hour minimum engagement for casual
+  // professional staff. Check against the QUT Professional Staff Enterprise Agreement and the payslip.
   'higher-ed': {
     id: 'higher-ed',
-    name: 'Higher Education (university, e.g. QUT)',
+    name: 'HEW Level 3.1',
     levels: [{ name: 'HEW Level 3.1', rate: 43.2 }],
     defaultEmployment: 'casual',
     casualRateIncludesLoading: true,
-    multipliers: () => flat(1),
+    payrollOnly: true,
+    minEngagementMinutes: 180,
+    multipliers: () => ({ weekday: 1, evening: 1, night: 1, saturday: 1.5, sunday: 2, publicHoliday: 2.5 }),
     eveningStart: 22 * 60,
     nightEnd: 6 * 60,
     breakTiers: HIGHER_ED_BREAK_TIERS,
@@ -245,6 +252,10 @@ export function applyAward(
     employment,
     multipliers: preset.multipliers(level, employment),
   };
+  if (award !== wp.award) {
+    next.minEngagementMinutes = preset.minEngagementMinutes ?? 0;
+    if (preset.payrollOnly) next.laundryAllowance = false;
+  }
   if (awardChanged) {
     next.eveningStart = preset.eveningStart;
     next.nightEnd = preset.nightEnd;

@@ -71,6 +71,11 @@ export function fmtMoney(n: number): string {
   return `${sign}$${Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/** Weekly cash payout, which has no cents digit: $406.9 */
+export function fmtCash(n: number): string {
+  return `$${n.toLocaleString('en-AU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+}
+
 export function fmtDateShort(iso: string): string {
   const d = parseISO(iso);
   return `${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]}`;

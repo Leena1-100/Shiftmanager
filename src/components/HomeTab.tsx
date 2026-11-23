@@ -2,7 +2,7 @@ import type { Settings, Shift, Source, WeekMeta, Workplace } from '../types';
 import { cashPaid, payslipMismatch, weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
-import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
+import { WEEKDAY_SHORT, dayOfWeek, fmtCash, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
 import { PlusIcon, SwapIcon, ClockIcon } from './Icons';
 
 type DayType = 'weekday' | 'saturday' | 'sunday' | 'publicHoliday' | 'message';
@@ -87,7 +87,7 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
               <span>
                 Cash shifts (no tax{money.cashExact !== money.cash ? `, from ${fmtMoney(money.cashExact)}` : ''})
               </span>
-              <b>{fmtMoney(money.cash)}</b>
+              <b>{fmtCash(money.cash)}</b>
             </div>
           )}
         </div>
@@ -220,7 +220,7 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
                             </span>
                           </span>
                           <span>{+(g.minutes / 60).toFixed(2)} hrs</span>
-                          <b>{fmtMoney(d === 'message' ? cashPaid(g.pay) : g.pay)}</b>
+                          <b>{d === 'message' ? fmtCash(cashPaid(g.pay)) : fmtMoney(g.pay)}</b>
                         </li>
                       );
                     })}
@@ -234,6 +234,25 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
                 </div>
               );
             })}
+          <ul className="breakdown totals">
+            {money.fromPayslip && Math.abs(money.diff) >= 0.01 && (
+              <li>
+                <span>
+                  Payslip vs app <span className="muted">Tanda pay on the payslip is {money.diff > 0 ? 'more' : 'less'} than the shifts above</span>
+                </span>
+                <span />
+                <b className="mismatch">
+                  {money.diff > 0 ? '+' : '−'}
+                  {fmtMoney(Math.abs(money.diff))}
+                </b>
+              </li>
+            )}
+            <li className="total">
+              <span>Total before tax{money.fromPayslip ? ' (payslip + cash)' : ''}</span>
+              <span />
+              <b>{fmtMoney(money.gross)}</b>
+            </li>
+          </ul>
           <p className="small muted">Super (paid separately by your employer) ≈ {fmtMoney(superAmt)}</p>
         </section>
       )}

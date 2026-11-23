@@ -2,7 +2,7 @@ import type { AppState, WeekMeta } from '../types';
 import { summarize } from '../lib/pay';
 import { payslipMismatch, weekMoney } from '../lib/payslip';
 import { TAX_FREE_THRESHOLD } from '../lib/tax';
-import { addDays, fmtDateShort, fmtDuration, fmtMoney, todayISO, weekStartOf } from '../lib/time';
+import { addDays, fmtCash, fmtDateShort, fmtDuration, fmtMoney, todayISO, weekStartOf } from '../lib/time';
 import { CheckIcon } from './Icons';
 
 interface Props {
@@ -179,7 +179,7 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenPayslip, onOpenW
                         '✓ '
                       )}
                       Payslip: gross {fmtMoney(w.money.tandaGross)} · tax −{fmtMoney(w.money.tax)}
-                      {w.money.cash > 0 && ` · cash ${fmtMoney(w.money.cash)}`}
+                      {w.money.cash > 0 && ` · cash ${fmtCash(w.money.cash)}`}
                       {Math.abs(w.money.diff) >= 0.01 && (
                         <span className="mismatch">
                           {' '}

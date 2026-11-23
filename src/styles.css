@@ -1978,3 +1978,17 @@ a.link {
 .shift-actual.missed {
   color: #d9761c;
 }
+
+/* Pay by day totals */
+.breakdown.totals {
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+}
+
+.breakdown li.total {
+  font-weight: 700;
+}
+
+.breakdown .mismatch {
+  color: #c77712;
+}

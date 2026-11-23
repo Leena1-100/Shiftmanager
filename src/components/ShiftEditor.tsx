@@ -3,6 +3,7 @@ import SheetBackdrop from './SheetBackdrop';
 import type { Settings, Shift, Workplace } from '../types';
 import { breaksFor, calcShift } from '../lib/pay';
 import { newId } from '../lib/merge';
+import { AWARDS } from '../lib/defaults';
 import ConfirmButton from './ConfirmButton';
 import PayBreakdown from './PayBreakdown';
 import { fmtDateLong, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM, todayISO } from '../lib/time';
@@ -45,6 +46,10 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
   const [ph, setPh] = useState(!!shift?.publicHoliday);
   const [note, setNote] = useState(shift?.note ?? '');
   const applyTax = !!shift?.applyTax;
+  // New shifts: paid through Tanda (payroll, taxed) or in cash. Payroll-only workplaces have no cash shifts
+  const [kind, setKind] = useState<'tanda' | 'cash'>('tanda');
+  const payrollOnly = !!AWARDS[wp.award].payrollOnly;
+  const newSource = payrollOnly ? ('manual' as const) : kind === 'cash' ? ('message' as const) : ('tanda' as const);
 
   const future = date > todayISO();
   const ps = parseHHMM(start);
@@ -63,8 +68,8 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
     const base = {
       id: shift?.id ?? newId(),
       date,
-      source: shift?.source ?? ('manual' as const),
-      sources: shift?.sources ?? ['manual' as const],
+      source: shift?.source ?? newSource,
+      sources: shift?.sources ?? [newSource],
       workplaceId: wp.id,
       publicHoliday: ph || undefined,
       note: note.trim() || undefined,
@@ -111,6 +116,20 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
                   {w.name}
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {!shift && !payrollOnly && (
+          <div className="field">
+            <span>Paid by</span>
+            <div className="seg small">
+              <button type="button" className={kind === 'tanda' ? 'on' : ''} onClick={() => setKind('tanda')}>
+                Tanda
+              </button>
+              <button type="button" className={kind === 'cash' ? 'on' : ''} onClick={() => setKind('cash')}>
+                Cash
+              </button>
             </div>
           </div>
         )}

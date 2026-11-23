@@ -1,6 +1,6 @@
 {
-  "name": "ShiftMoney - Shifts & Pay Tracker",
-  "short_name": "ShiftMoney",
+  "name": "Shift Manager - Shifts & Pay Tracker",
+  "short_name": "Shift Manager",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

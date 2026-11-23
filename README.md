@@ -1,4 +1,4 @@
-# ShiftMoney
+# Shift Manager
 
 A shift and weekly pay tracker for part-time/casual fast food workers in Australia. It's a mobile web app — add it to your phone's home screen and use it like a native app.
 

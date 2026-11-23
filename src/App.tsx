@@ -69,7 +69,7 @@ export default function App() {
 
   const updateBanner = update.updateReady && (
     <div className="update-banner">
-      <span>A new version of ShiftMoney is ready.</span>
+      <span>A new version of Shift Manager is ready.</span>
       <button className="primary" onClick={update.reload}>
         Update now
       </button>
@@ -101,7 +101,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-dot" />
-          ShiftMoney
+          Shift Manager
         </div>
         {showWeekNav && (
           <div className="weeknav">

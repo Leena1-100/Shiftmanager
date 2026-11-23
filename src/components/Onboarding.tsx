@@ -45,7 +45,7 @@ export default function Onboarding({ settings, cloud, onFinish }: Props) {
           <div className="welcome-logo">
             <span className="brand-dot big" />
           </div>
-          <h1>ShiftMoney</h1>
+          <h1>Shift Manager</h1>
           <p className="muted">Track your shifts, breaks and pay — to the minute.</p>
           <ul className="welcome-list">
             <li>Merge Tanda shifts and cash shifts</li>
@@ -166,7 +166,7 @@ export default function Onboarding({ settings, cloud, onFinish }: Props) {
               Back
             </button>
             <button className="primary block" onClick={() => onFinish(workplaces, { taxMode, weekStartDay })}>
-              Start using ShiftMoney
+              Start using Shift Manager
             </button>
           </div>
         </div>

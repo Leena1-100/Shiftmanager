@@ -127,7 +127,7 @@ export function useCloudSync(state: AppState, replaceState: (s: AppState) => voi
     setError('');
     const found = await findSave(token);
     if (opts.restoreOnly && !(found?.data && hasData(found.data.state))) {
-      throw new CloudError('No ShiftMoney save was found on this GitHub account.');
+      throw new CloudError('No Shift Manager save was found on this GitHub account.');
     }
     if (!found) {
       const { gistId, savedAt } = await createSave(token, stateRef.current);

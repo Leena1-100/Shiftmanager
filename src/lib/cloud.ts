@@ -13,7 +13,7 @@ const FILE = 'shiftmoney-data.json';
 const API = 'https://api.github.com';
 
 /** Opens GitHub's "new token" page with only the gist scope ticked */
-export const NEW_TOKEN_URL = 'https://github.com/settings/tokens/new?scopes=gist&description=ShiftMoney%20cloud%20save';
+export const NEW_TOKEN_URL = 'https://github.com/settings/tokens/new?scopes=gist&description=Shift%20Manager%20cloud%20save';
 
 export interface CloudConfig {
   token: string;
@@ -106,7 +106,7 @@ async function readFile(file: GistFile): Promise<CloudData | null> {
   }
 }
 
-/** Find this user's ShiftMoney gist, if there is one */
+/** Find this user's Shift Manager gist, if there is one */
 export async function findSave(token: string): Promise<{ gistId: string; data: CloudData | null } | null> {
   for (let page = 1; page <= 5; page++) {
     const gists = await gh<Gist[]>(token, `/gists?per_page=100&page=${page}`);
@@ -144,7 +144,7 @@ export async function createSave(token: string, state: AppState): Promise<{ gist
   const parsed = JSON.parse(body) as { files: unknown };
   const gist = await gh<Gist>(token, '/gists', {
     method: 'POST',
-    body: JSON.stringify({ description: 'ShiftMoney cloud save (do not edit)', public: false, files: parsed.files }),
+    body: JSON.stringify({ description: 'Shift Manager cloud save (do not edit)', public: false, files: parsed.files }),
   });
   return { gistId: gist.id, savedAt };
 }

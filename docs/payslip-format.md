@@ -1,6 +1,6 @@
 # Payslip format manual
 
-The weekly payslip from the employer's payroll always has the same layout. ShiftMoney reads it with a
+The weekly payslip from the employer's payroll always has the same layout. Shift Manager reads it with a
 dedicated reader (`src/lib/payslipTemplate.ts`) that takes each figure from one fixed place, instead of
 guessing from labels. This page is the reference for that layout and for how each figure is read.
 

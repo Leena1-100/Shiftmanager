@@ -31,7 +31,7 @@ export default function SettingsTab({ state, onSaveWorkplace, onDeleteWorkplace,
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `shiftmoney-backup-${todayISO()}.json`;
+    a.download = `shift-manager-backup-${todayISO()}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -43,7 +43,7 @@ export default function SettingsTab({ state, onSaveWorkplace, onDeleteWorkplace,
       setPendingRestore(reviveState(JSON.parse(await file.text())));
     } catch {
       setPendingRestore(null);
-      setBackupError("Couldn't read that file. Choose a ShiftMoney backup (.json).");
+      setBackupError("Couldn't read that file. Choose a Shift Manager backup (.json).");
     }
   };
 
@@ -114,7 +114,7 @@ export default function SettingsTab({ state, onSaveWorkplace, onDeleteWorkplace,
         )}
       </section>
 
-      <p className="small muted version">ShiftMoney version {__BUILD_ID__}</p>
+      <p className="small muted version">Shift Manager version {__BUILD_ID__}</p>
 
       {editing && (
         <SheetBackdrop onClose={() => setEditing(null)}>

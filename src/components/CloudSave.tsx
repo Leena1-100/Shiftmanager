@@ -113,7 +113,7 @@ export default function CloudSave({ cloud, mode = 'settings', onRestored }: Prop
     return (
       <div className="confirm-box">
         <p className="small">
-          <b>This GitHub account already has a ShiftMoney save</b> ({c.workplaces.length} workplace{c.workplaces.length === 1 ? '' : 's'},{' '}
+          <b>This GitHub account already has a Shift Manager save</b> ({c.workplaces.length} workplace{c.workplaces.length === 1 ? '' : 's'},{' '}
           {c.shifts.length} shifts, saved {fmtSavedAt(choice.cloud.savedAt)}). Which data do you want to keep?
         </p>
         <div className="stack-sm">

@@ -211,11 +211,10 @@ function ShiftCard({
   // Once actual times are entered, the card shows only those: times and breaks as entered
   const eff = calcShift(shift, wp, 'effective');
   const dow = dayOfWeek(shift.date);
-  const weekend = dow === 0 || dow === 6;
 
   return (
     <article className="shift" onClick={onEdit} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onEdit()}>
-      <div className={`shift-day${weekend ? ' weekend' : ''}${shift.publicHoliday ? ' ph' : ''}`}>
+      <div className="shift-day" style={{ ['--c' as string]: wp.color }}>
         <b>{WEEKDAY_SHORT[dow]}</b>
         <span>{fmtDateShort(shift.date)}</span>
       </div>

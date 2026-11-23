@@ -2286,3 +2286,9 @@ input[type='date']::-webkit-date-and-time-value {
     padding: 3px 1px;
   }
 }
+
+/* Date badge on shift cards takes the workplace's colour */
+.shift-day {
+  background: color-mix(in srgb, var(--c, var(--mint)) 14%, #fff);
+  color: color-mix(in srgb, var(--c, var(--mint)) 80%, #000);
+}

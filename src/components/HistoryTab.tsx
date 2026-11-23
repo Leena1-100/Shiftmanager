@@ -50,7 +50,8 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenPayslip, onOpenW
   const received = weeks.filter((w) => w.meta.received).reduce((a, w) => a + (w.meta.receivedAmount ?? w.net), 0);
 
   const recent = weeks.slice(0, 8).reverse();
-  const maxBar = Math.max(1, ...recent.map((w) => w.sum.gross));
+  // Before tax: payslip gross + cash shifts once the payslip is in, the app's figure until then
+  const maxBar = Math.max(1, ...recent.map((w) => w.gross));
 
   return (
     <div className="stack">
@@ -116,12 +117,27 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenPayslip, onOpenW
           <div className="card-title">Recent weekly pay (before tax)</div>
           <div className="bars" role="img" aria-label="Weekly pay before tax for recent weeks">
             {recent.map((w) => (
-              <div className="bar-col" key={w.start} title={`${fmtDateShort(w.start)} ${fmtMoney(w.sum.gross)}`}>
-                <span className="bar-val">${Math.round(w.sum.gross)}</span>
-                <div className="bar" style={{ height: `${(w.sum.gross / maxBar) * 100}%` }} />
+              <div
+                className="bar-col"
+                key={w.start}
+                title={`${fmtDateShort(w.start)} ${fmtMoney(w.gross)}${w.money.fromPayslip ? ' (payslip)' : ' (estimate)'}`}
+              >
+                <span className="bar-val">${Math.round(w.gross)}</span>
+                <div
+                  className={w.money.fromPayslip ? 'bar from-payslip' : 'bar estimate'}
+                  style={{ height: `${(w.gross / maxBar) * 100}%` }}
+                />
                 <span className="bar-label">{fmtDateShort(w.start)}</span>
               </div>
             ))}
+          </div>
+          <div className="cal-legend small muted">
+            <span>
+              <i className="lg worked" /> Payslip (gross + cash)
+            </span>
+            <span>
+              <i className="lg planned" /> No payslip yet (app estimate)
+            </span>
           </div>
         </section>
       )}

@@ -27,6 +27,9 @@ export const RETAIL_BREAK_TIERS: BreakTier[] = [
   { minMinutes: 601, paidCount: 2, paidLength: 10, unpaidMinutes: 60 },
 ];
 
+/** University professional staff: an unpaid meal break after 5 hours, no paid rest breaks */
+export const HIGHER_ED_BREAK_TIERS: BreakTier[] = [{ minMinutes: 301, paidCount: 0, paidLength: 10, unpaidMinutes: 30 }];
+
 /** Break tiers earlier versions used for every award; kept to recognise and upgrade saved workplaces */
 export const LEGACY_BREAK_TIERS: BreakTier[] = [
   { minMinutes: 240, paidCount: 1, paidLength: 10, unpaidMinutes: 0 },
@@ -48,6 +51,10 @@ export interface AwardPreset {
   levels: AwardLevel[];
   /** When the level rates took effect */
   ratesFrom?: string;
+  /** Employment type picked when this award is chosen */
+  defaultEmployment?: Employment;
+  /** Level rates are the casual hourly rate with the 25% loading already in */
+  casualRateIncludesLoading?: boolean;
   /** Laundry allowance for employees who wash their own uniform */
   laundry?: { perShift: number; perWeekFullTime: number };
   /** Junior rate as a percentage of the adult rate */
@@ -122,6 +129,20 @@ export const AWARDS: Record<AwardId, AwardPreset> = {
     eveningStart: 18 * 60,
     nightEnd: 0,
     breakTiers: RETAIL_BREAK_TIERS,
+  },
+  // University jobs (e.g. QUT) pay from the university's enterprise agreement. The rate is the one in
+  // the job offer: QUT casual HEW Level 3.1 is $43.20 an hour with the casual loading included, so no
+  // further loading is added. Weekend penalties depend on the agreement, so they start flat and can be edited.
+  'higher-ed': {
+    id: 'higher-ed',
+    name: 'Higher Education (university, e.g. QUT)',
+    levels: [{ name: 'HEW Level 3.1', rate: 43.2 }],
+    defaultEmployment: 'casual',
+    casualRateIncludesLoading: true,
+    multipliers: () => flat(1),
+    eveningStart: 22 * 60,
+    nightEnd: 6 * 60,
+    breakTiers: HIGHER_ED_BREAK_TIERS,
   },
   custom: {
     id: 'custom',
@@ -215,12 +236,14 @@ export function applyAward(
   const requested = change.level ?? wp.level;
   const level =
     preset.levels.length === 0 ? requested : preset.levels.some((l) => l.name === requested) ? requested : preset.levels[0].name;
+  const employment = change.employment ?? (award !== wp.award && preset.defaultEmployment ? preset.defaultEmployment : wp.employment);
   const next: Workplace = {
     ...wp,
     ...change,
     award,
     level,
-    multipliers: preset.multipliers(level, change.employment ?? wp.employment),
+    employment,
+    multipliers: preset.multipliers(level, employment),
   };
   if (awardChanged) {
     next.eveningStart = preset.eveningStart;

@@ -70,7 +70,7 @@ export type TaxMode = 'resident-tft' | 'resident-no-tft' | 'whm' | 'non-resident
 
 export type Employment = 'parttime' | 'casual' | 'fulltime';
 
-export type AwardId = 'fast-food' | 'general-retail' | 'custom';
+export type AwardId = 'fast-food' | 'general-retail' | 'higher-ed' | 'custom';
 
 /** Age bracket for junior rates; 'adult' is 21 and over */
 export type JuniorAge = 'adult' | 'under16' | '16' | '17' | '18' | '19' | '20';

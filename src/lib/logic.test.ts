@@ -692,3 +692,14 @@ describe('cash received for the week', () => {
     expect(weekMoney(sum, {}, 'resident-tft')).toMatchObject({ cash: 177.7, cashDiff: 0 });
   });
 });
+
+describe('higher education award', () => {
+  it('QUT casual HEW 3.1 is $43.20 an hour flat, casual by default, no laundry', () => {
+    const wp = applyAward(newWorkplace(1), { award: 'higher-ed' });
+    expect(wp).toMatchObject({ level: 'HEW Level 3.1', employment: 'casual', baseRate: 43.2 });
+    expect(wp.multipliers.saturday).toBe(1);
+    expect(wp.multipliers.weekday).toBe(1);
+    const shift: Shift = { id: 'q', date: '2026-11-25', start: hm(9), end: hm(13), source: 'manual', sources: ['manual'], workplaceId: wp.id };
+    expect(calcShift(shift, wp, 'planned', '2026-11-20').pay).toBeCloseTo(172.8, 2);
+  });
+});

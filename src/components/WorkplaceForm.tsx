@@ -145,12 +145,18 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
       </label>
       {awardRate !== null ? (
         <div className="award-rate">
-          <p className="small">
-            Award minimum for {wp.level}
-            {wp.age && wp.age !== 'adult' ? ` (age ${JUNIOR_AGE_LABEL[wp.age].toLowerCase()})` : ''}: <b>{fmtMoney(awardRate)}/h</b>
-            {wp.employment === 'casual' && <> · with 25% casual loading {fmtMoney(awardRate * 1.25)}/h</>}
-            <span className="muted"> · from {preset.ratesFrom}</span>
-          </p>
+          {preset.casualRateIncludesLoading ? (
+            <p className="small">
+              Casual rate for {wp.level}: <b>{fmtMoney(awardRate)}/h</b> (casual loading included) plus super
+            </p>
+          ) : (
+            <p className="small">
+              Award minimum for {wp.level}
+              {wp.age && wp.age !== 'adult' ? ` (age ${JUNIOR_AGE_LABEL[wp.age].toLowerCase()})` : ''}: <b>{fmtMoney(awardRate)}/h</b>
+              {wp.employment === 'casual' && <> · with 25% casual loading {fmtMoney(awardRate * 1.25)}/h</>}
+              <span className="muted"> · from {preset.ratesFrom}</span>
+            </p>
+          )}
           {Math.abs(wp.baseRate - awardRate) >= 0.005 ? (
             <p className="small">
               {wp.baseRate > awardRate ? 'Your rate is above the award minimum. ' : 'Your rate is below the award minimum. '}
@@ -159,15 +165,21 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
               </button>
             </p>
           ) : (
-            <p className="small muted">Filled in from the award. Change it if your payslip shows a higher rate.</p>
+            <p className="small muted">
+              {preset.casualRateIncludesLoading
+                ? 'From the job offer. Change it if your payslip shows a different rate.'
+                : 'Filled in from the award. Change it if your payslip shows a higher rate.'}
+            </p>
           )}
-          <p className="small muted">
-            Check against the official{' '}
-            <a href={PAY_GUIDES_URL} target="_blank" rel="noreferrer">
-              Fair Work pay guide
-            </a>
-            .
-          </p>
+          {!preset.casualRateIncludesLoading && (
+            <p className="small muted">
+              Check against the official{' '}
+              <a href={PAY_GUIDES_URL} target="_blank" rel="noreferrer">
+                Fair Work pay guide
+              </a>
+              .
+            </p>
+          )}
         </div>
       ) : (
         <p className="small muted">Enter the ordinary hourly rate from your payslip or agreement.</p>

@@ -705,3 +705,14 @@ describe('higher education award', () => {
     expect(calcShift({ ...shift, date: '2026-11-28', end: hm(11) }, wp, 'planned', '2026-11-20').pay).toBeCloseTo(3 * 43.2 * 1.5, 2);
   });
 });
+
+describe('Tanda rounding', () => {
+  it('07:20-16:00 weekday is $228.39 like Tanda (hours pay rounded to the cent, then laundry)', () => {
+    const wp = { ...applyAward(newWorkplace(0), { award: 'fast-food', level: 'Level 1' }), id: 'w', laundryAllowance: true };
+    const s: Shift = { id: 't', date: '2026-12-01', start: hm(7, 20), end: hm(16), source: 'tanda', sources: ['tanda'], workplaceId: 'w' };
+    expect(calcShift(s, wp, 'planned', '2026-11-23').pay).toBe(228.39);
+    // Matches Tanda's figures for other worked shifts too
+    expect(calcShift({ ...s, end: hm(16, 2) }, wp, 'planned', '2026-11-23').pay).toBe(229.32); // 8h 12m
+    expect(calcShift({ ...s, start: hm(7, 30), end: hm(16, 5) }, wp, 'planned', '2026-11-23').pay).toBe(226.08); // 8h 5m
+  });
+});

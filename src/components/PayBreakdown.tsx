@@ -30,7 +30,8 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
   const firstBand = bandAt(shift.date, base.start, !!shift.publicHoliday, wp);
   if (base.topUpMinutes) worked[firstBand] = (worked[firstBand] ?? 0) - base.topUpMinutes;
   const bandRows = (Object.entries(worked) as [Band, number][]).filter(([, m]) => m > 0);
-  const bandPay = (band: Band, min: number) => (min * rate * wp.multipliers[band]) / 60;
+  // Rounded to the cent per rate, as Tanda does
+  const bandPay = (band: Band, min: number) => Math.round(((min * rate * wp.multipliers[band]) / 60) * 100) / 100;
   const calculated =
     bandRows.reduce((a, [b, m]) => a + bandPay(b, m), 0) +
     (base.topUpMinutes ? bandPay(firstBand, base.topUpMinutes) : 0) +

@@ -30,7 +30,8 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
     workplaces.find((w) => w.id === shift?.workplaceId)?.id ?? workplaces[0].id,
   );
   const wp = workplaces.find((w) => w.id === workplaceId) ?? workplaces[0];
-  const a = shift?.actual;
+  // Worked times only count up to today; a future shift opens with its roster
+  const a = shift && shift.date <= todayISO() ? shift.actual : undefined;
   const init = {
     date: shift?.date ?? defaultDate,
     start: fmtTime(a?.start ?? shift?.start ?? 9 * 60),

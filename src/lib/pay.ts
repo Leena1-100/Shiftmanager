@@ -131,12 +131,15 @@ export function calcShift(
     minutesByBand[b] = (minutesByBand[b] ?? 0) + topUpMinutes;
   }
 
+  // Like Tanda, each rate's pay is rounded to the cent on its own before the allowance is added:
+  // 8h 10m x $27.81 = $227.115 -> $227.11, + $1.28 laundry = $228.39
+  const tandaCents = (n: number) => Math.round(n * 100) / 100;
   let pay = 0;
+  // Missed breaks join their rate's hours in Tanda's rounded hours (10 min = 0.17 h) before rounding
   for (const [band, mins] of Object.entries(minutesByBand) as [Band, number][]) {
-    pay += (mins * wp.baseRate * wp.multipliers[band]) / 60;
+    const hours = band === missedBand ? (mins - missedBreakMinutes) / 60 + missedHours : mins / 60;
+    if (hours > 0) pay += tandaCents(hours * wp.baseRate * wp.multipliers[band]);
   }
-  // Swap the exact-minute value of missed breaks for Tanda's rounded-hours value
-  pay += missedPay - (missedBreakMinutes * wp.baseRate * wp.multipliers[missedBand]) / 60;
   const allowance = span > 0 ? laundryPerShift(wp) : 0;
   pay += allowance;
   // Once a shift is worked, Tanda's own dollar figure is what gets paid

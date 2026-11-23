@@ -135,7 +135,6 @@ export default function App() {
             shifts={weekShifts}
             weekStart={weekStart}
             weekMeta={state.weeks[weekStart]}
-            onOpenPayslip={() => setPayslipWeek(weekStart)}
             onEdit={(s) => setEditing({ shift: s, date: s.date })}
             onAdd={() => setEditing({ shift: null, date: weekStart })}
             onSave={saveShift}

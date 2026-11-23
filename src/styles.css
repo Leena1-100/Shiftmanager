@@ -2009,3 +2009,11 @@ a.link {
 .breakdown li.down span:first-child {
   color: var(--down);
 }
+
+/* Tanda take-home line under the tax */
+.hero-lines .hero-sub {
+  font-weight: 800;
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}

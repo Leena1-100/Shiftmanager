@@ -1,5 +1,5 @@
 import type { Settings, Shift, Source, WeekMeta, Workplace } from '../types';
-import { payslipMismatch, weekMoney } from '../lib/payslip';
+import { weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { WEEKDAY_SHORT, dayOfWeek, fmtCash, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
@@ -13,14 +13,13 @@ interface Props {
   shifts: Shift[];
   weekStart: string;
   weekMeta?: WeekMeta;
-  onOpenPayslip: () => void;
   onEdit: (s: Shift) => void;
   onAdd: () => void;
   onSave: (s: Shift) => void;
   onGoImport: () => void;
 }
 
-export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpenPayslip, onEdit, onAdd, onSave, onGoImport }: Props) {
+export default function HomeTab({ settings, workplaces, shifts, weekMeta, onEdit, onAdd, onSave, onGoImport }: Props) {
   const sum = summarize(shifts, workplaces, 'effective');
   // Before the payslip arrives: what's been entered, with estimated tax. After: the payslip's figures
   const money = weekMoney(sum, weekMeta, settings.taxMode);
@@ -77,6 +76,10 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
             <span>{fromPayslip ? 'Tax withheld (payslip)' : 'Estimated tax'}</span>
             <b>−{fmtMoney(money.tax)}</b>
           </div>
+          <div className="hero-sub">
+            <span>Tanda pay after tax</span>
+            <b>{fmtMoney(money.net - money.cash)}</b>
+          </div>
           {money.cash > 0 && (
             <div>
               <span>Cash shifts (no tax)</span>
@@ -93,37 +96,6 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
             </div>
           )}
         </div>
-        {sum.shifts > 0 && sum.workedShifts < sum.shifts && (
-          <div className="hero-note">
-            Includes {sum.shifts - sum.workedShifts} shift{sum.shifts - sum.workedShifts === 1 ? '' : 's'} still to come (
-            {fmtMoney(sum.gross - sum.workedGross)} estimated)
-          </div>
-        )}
-        {sum.shifts > 0 && (
-          <button className="payslip-row" onClick={onOpenPayslip}>
-            {fromPayslip ? (
-              <>
-                <span>
-                  {weekMeta?.payslip && payslipMismatch(weekMeta.payslip) !== null ? (
-                    <span className="mismatch">⚠ Check the payslip tax · </span>
-                  ) : (
-                    '✓ '
-                  )}
-                  Payslip added
-                  {Math.abs(money.diff) < 0.01
-                    ? ' · matches the app'
-                    : ` · ${money.diff > 0 ? '+' : '−'}${fmtMoney(Math.abs(money.diff))} vs app`}
-                </span>
-                <span className="payslip-edit">Edit</span>
-              </>
-            ) : (
-              <>
-                <span>Got this week's payslip?</span>
-                <span className="payslip-edit">Add payslip</span>
-              </>
-            )}
-          </button>
-        )}
       </section>
 
       {shifts.length > 0 && (

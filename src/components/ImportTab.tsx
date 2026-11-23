@@ -96,7 +96,7 @@ export default function ImportTab({ settings, workplaces, allShifts, weekStart, 
   return (
     <div className="stack">
       <p className="small muted pad">
-        Add your Tanda shifts and message shifts and they'll be merged into one roster. When the same day has different times,{' '}
+        Add your Tanda shifts and cash shifts and they'll be merged into one roster. When the same day has different times,{' '}
         <b>{SOURCE_LABEL[settings.mergePriority]}</b> wins, and you can switch to the other version from the shift card any time.
       </p>
 
@@ -117,7 +117,7 @@ export default function ImportTab({ settings, workplaces, allShifts, weekStart, 
         <section className="card" key={src}>
           <div className="card-title">
             <span className={`badge ${src}`}>{SOURCE_LABEL[src]}</span>
-            {src === 'tanda' ? 'Tanda shifts' : 'Shifts from messages'}
+            {src === 'tanda' ? 'Tanda shifts' : 'Cash shifts'}
           </div>
           <textarea
             rows={6}

@@ -48,7 +48,7 @@ export default function Onboarding({ settings, cloud, onFinish }: Props) {
           <h1>ShiftMoney</h1>
           <p className="muted">Track your shifts, breaks and pay — to the minute.</p>
           <ul className="welcome-list">
-            <li>Merge shifts from Tanda and your manager's messages</li>
+            <li>Merge Tanda shifts and cash shifts</li>
             <li>Paid and unpaid breaks worked out for you</li>
             <li>See your pay before and after tax every week</li>
           </ul>

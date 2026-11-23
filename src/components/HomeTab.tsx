@@ -5,7 +5,7 @@ import { swapAlt } from '../lib/merge';
 import { WEEKDAY_SHORT, dayOfWeek, fmtCash, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
 import { PlusIcon, SwapIcon } from './Icons';
 
-export const SOURCE_LABEL: Record<Source, string> = { tanda: 'Tanda', message: 'Message', manual: 'Manual' };
+export const SOURCE_LABEL: Record<Source, string> = { tanda: 'Tanda', message: 'Cash', manual: 'Manual' };
 
 interface Props {
   settings: Settings;
@@ -138,7 +138,7 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onEdit
         <div className="empty">
           <p>No shifts this week yet</p>
           <button className="primary" onClick={onGoImport}>
-            Import from Tanda / messages
+            Import Tanda / cash shifts
           </button>
         </div>
       ) : (

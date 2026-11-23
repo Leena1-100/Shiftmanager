@@ -83,7 +83,7 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
         {c.flat ? (
           <div className="bd-row">
             <span>
-              Message roster: flat rate
+              Cash shift: flat rate
               <br />
               <small>
                 {hours(c.workedMinutes)} × {fmtMoney(messageRate(wp, shift.date, shift.publicHoliday))}{' '}

@@ -177,13 +177,13 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
       )}
 
       <div className="field">
-        <span>Rates for message rosters (cash)</span>
+        <span>Rates for cash shifts</span>
         <div className="row2">
           <label className="money-input">
             <span>$</span>
             <input
               inputMode="decimal"
-              aria-label="Weekday rate for message rosters"
+              aria-label="Weekday rate for cash shifts"
               placeholder={String(DEFAULT_MESSAGE_RATE_WEEKDAY)}
               defaultValue={wp.messageRateWeekday ?? DEFAULT_MESSAGE_RATE_WEEKDAY}
               onChange={(e) =>
@@ -199,7 +199,7 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
             <span>$</span>
             <input
               inputMode="decimal"
-              aria-label="Weekend rate for message rosters"
+              aria-label="Weekend rate for cash shifts"
               placeholder={String(DEFAULT_MESSAGE_RATE)}
               defaultValue={wp.messageRate ?? DEFAULT_MESSAGE_RATE}
               onChange={(e) =>
@@ -211,7 +211,7 @@ export default function WorkplaceForm({ value: wp, onChange }: Props) {
         </div>
       </div>
       <p className="small muted">
-        Shifts that only came from a message are paid as hours × these rates per hour (weekend = Saturday, Sunday and public holidays), with no
+        Cash shifts are paid as hours × these rates per hour (weekend = Saturday, Sunday and public holidays), with no
         allowances, tax or super.
       </p>
 

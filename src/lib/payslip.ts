@@ -2,6 +2,7 @@ import type { Payslip, TaxMode, WeekMeta } from '../types';
 import { taxableGross, type WeekSummary } from './pay';
 import { weeklyWithholding } from './tax';
 import { makeISO } from './time';
+import { isTemplatePayslip, parseTemplatePayslip } from './payslipTemplate';
 
 const MONTHS: Record<string, number> = {
   jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
@@ -44,6 +45,16 @@ function datesIn(line: string): string[] {
  * table. With "This period" and "YTD" columns, the first amount is this period's.
  */
 export function parsePayslip(text: string): Partial<Payslip> {
+  const generic = parseAnyPayslip(text);
+  if (!isTemplatePayslip(text)) return generic;
+  // This employer's payslip layout: read each figure from its fixed place, fall back to the general reader
+  const template = parseTemplatePayslip(text);
+  const merged: Partial<Payslip> = { ...generic };
+  for (const [k, v] of Object.entries(template) as [keyof Payslip, never][]) if (v !== undefined) merged[k] = v;
+  return merged;
+}
+
+function parseAnyPayslip(text: string): Partial<Payslip> {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const found: Partial<Payslip> = {};
 

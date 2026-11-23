@@ -6,6 +6,7 @@ import { weeklyWithholding, annualTax } from './tax';
 import { FAST_FOOD_BREAK_TIERS as DEFAULT_BREAK_TIERS, LEGACY_BREAK_TIERS, applyAward, awardMinimumRate, newWorkplace } from './defaults';
 import { reviveState } from './storage';
 import { parsePayslip, payslipMismatch, weekMoney } from './payslip';
+import { dollars, isTemplatePayslip } from './payslipTemplate';
 import type { Shift } from '../types';
 
 const WEEK = '2026-10-26'; // Monday
@@ -292,7 +293,7 @@ describe('Tanda screenshots', () => {
 
 describe('pasted messages', () => {
   it('reads times from a message pasted as-is', () => {
-    const msg = `Hi Leena! Here are your shifts for next week 😊
+    const msg = `Hi Jane! Here are your shifts for next week 😊
 Monday 26/10 - 7:20am to 4pm
 Wed 10.30-4
 Thursday 7:20 - 16:00 (30 min break)
@@ -620,5 +621,38 @@ Net Pay $604.94`;
   it('flags a saved payslip whose tax does not fit gross - net', () => {
     expect(payslipMismatch({ gross: 662.94, tax: 3.84, net: 604.94 })).toBe(58);
     expect(payslipMismatch({ gross: 662.94, tax: 58, net: 604.94 })).toBeNull();
+  });
+});
+
+describe('employer payslip layout (docs/payslip-format.md)', () => {
+  // Real OCR output of a payslip screenshot, personal details replaced. OCR slips kept:
+  // "Gross Eaming", "24Nov", "237" for 23.7 hours, "$384" for $3.84, "$7955" for $79.55
+  const OCR = "\u201d The Trustee for EXAMPLE FAMILY TRUST\n| | ABN : 00000000000\n1 Mall Street\nDe Queens Plaza LG 04\n| Brisbane City\nsoul origin. | QLD 4000\nName: Jane Citizen Period Starting 16 Nov 2026\nJob Title: FOH Period Ending 22 Nov 2026\nAddress: 1 Example Street Payment Date 24Nov 2026\nBrisbane City Gross Eaming $662.94\naL 4000\nNet Pay $604.94\nSuperannuation $79.55\nUnits Rate This Pay vo\nSALARY & WAGE\nOrdinary Hours 237 $27.81000 $659.10 $2,650.58\nAllowances subject to tax withholding and super\nLaundry 3 $1.28000 $384 $17.92\n$662.94 $2,668.50\nTAX\nPAYG $58.00 $174.00\n$58.00 $174.00\nSUPER CONTRIBUTIONS\nSuper Guarantee $7955 $320.22\nAustrallanSuper - 0000000000 $7955 $32022\nLEAVE DETAILS Accrued (hrs) Taken (hrs) Remaining (hrs)\nAnnual Leave 1.82308 0 733154\nPAYMENT DETAILS Amount\n(000-000) **++*0000 Jane Citizen $604.94\n\u2014\u2014\n\n";
+
+  it('is recognised as the employer layout', () => {
+    expect(isTemplatePayslip(OCR)).toBe(true);
+  });
+
+  it('reads every figure from its fixed place', () => {
+    expect(parsePayslip(OCR)).toMatchObject({
+      periodStart: '2026-11-16',
+      periodEnd: '2026-11-22',
+      payDate: '2026-11-24',
+      gross: 662.94,
+      tax: 58,
+      net: 604.94,
+      super: 79.55,
+      hours: 23.7,
+    });
+  });
+
+  it('puts back decimal points OCR dropped from $ amounts', () => {
+    expect(dollars('Laundry 3 $1.28000 $384 $17.92')).toEqual([1.28, 3.84, 17.92]);
+    expect(dollars('Super Guarantee $7955 $320.22')).toEqual([79.55, 320.22]);
+  });
+
+  it('never takes tax from the allowance heading or the laundry line', () => {
+    const noPayg = OCR.replace(/^PAYG .*$/m, 'PAYG');
+    expect(parsePayslip(noPayg).tax).toBe(58); // from gross - net, not $3.84
   });
 });

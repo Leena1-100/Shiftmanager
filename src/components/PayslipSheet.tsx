@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Payslip, Settings, Shift, Workplace } from '../types';
 import { summarize } from '../lib/pay';
 import { parsePayslip, payslipMismatch, weekMoney } from '../lib/payslip';
+import { isTemplatePayslip } from '../lib/payslipTemplate';
 import { imageToText } from '../lib/ocr';
 import { addDays, fmtDateShort, fmtMoney, weekStartOf } from '../lib/time';
 import { CloseIcon, ImageIcon } from './Icons';
@@ -79,7 +80,9 @@ export default function PayslipSheet({ weekStart, existing, shifts, workplaces, 
     if (p.payDate) setPayDate(p.payDate);
     setMessage(
       p.gross !== undefined && p.tax !== undefined
-        ? 'Filled in from the payslip. Check the numbers before saving.'
+        ? isTemplatePayslip(raw)
+          ? "Recognised your employer's payslip layout and filled in each figure from its place. Check before saving."
+          : 'Filled in from the payslip. Check the numbers before saving.'
         : 'Some figures were found. Fill in the rest below.',
     );
   };

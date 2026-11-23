@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AppState, Shift } from '../types';
-import { calcShift, workplaceFor } from '../lib/pay';
+import { calcShift, summarize, workplaceFor } from '../lib/pay';
+import { weekMoney } from '../lib/payslip';
 import { addDays, fmtDateLong, fmtDuration, fmtMoney, fmtTime, makeISO, todayISO, weekStartOf, WEEKDAY_SHORT } from '../lib/time';
 import { ChevronLeft, ChevronRight, ImportIcon, PlusIcon } from './Icons';
 import { SOURCE_LABEL } from './HomeTab';
@@ -108,7 +109,12 @@ export default function CalendarTab({ state, onEdit, onAdd, onImportWeek }: Prop
           ))}
         </div>
         {weeks.map((w) => {
-          const weekTotal = Array.from({ length: 7 }, (_, i) => byDay.get(addDays(w, i))?.pay ?? 0).reduce((a, b) => a + b, 0);
+          // Same figure as This week's "before tax": payslip gross (or Tanda estimate) + cash received
+          const wEnd = addDays(w, 6);
+          const wShifts = shifts.filter((s) => s.date >= w && s.date <= wEnd);
+          const meta = state.weeks[w];
+          const weekTotal =
+            wShifts.length > 0 || meta?.payslip ? weekMoney(summarize(wShifts, workplaces, 'effective'), meta, settings.taxMode).gross : 0;
           return (
             <div className="cal-week" key={w}>
               <div className="cal-week-bar">

@@ -2,7 +2,7 @@ import type { Band, Settings, Shift, Workplace } from '../types';
 import { bandAt, calcShift, isUntaxed, summarize, taxableGross } from '../lib/pay';
 import { bandLabel, isWeekendRateDay, messageRate } from '../lib/defaults';
 import { weeklyWithholding } from '../lib/tax';
-import { addDays, fmtDateShort, fmtDuration, fmtMoney, fmtTime, weekStartOf } from '../lib/time';
+import { addDays, fmtDuration, fmtMoney, fmtTime, weekStartOf } from '../lib/time';
 
 interface Props {
   shift: Shift;
@@ -186,24 +186,11 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
         ) : (
           <>
             <div className="bd-row">
-              <span>
-                Est. tax (PAYG)
-                <br />
-                <small>
-                  Week {fmtDateShort(weekStart)}–{fmtDateShort(weekEnd)}: {fmtMoney(weekTax)} on {fmtMoney(weekTaxable)}. This shift is{' '}
-                  {Math.round(share * 100)}% of that
-                </small>
-              </span>
+              <span>Est. tax (PAYG)</span>
               <b>−{fmtMoney(tax)}</b>
             </div>
             <div className="bd-row">
-              <span>
-                Super (paid by employer, not taken off)
-                <br />
-                <small>
-                  {fmtMoney(c.pay)} × {Math.round(settings.superRate * 1000) / 10}%
-                </small>
-              </span>
+              <span>Super</span>
               <span>{fmtMoney(superAmt)}</span>
             </div>
           </>

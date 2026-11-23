@@ -3,7 +3,7 @@ import { payslipMismatch, weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
-import { PlusIcon, SwapIcon, ClockIcon, CheckIcon } from './Icons';
+import { PlusIcon, SwapIcon, ClockIcon } from './Icons';
 
 type DayType = 'weekday' | 'saturday' | 'sunday' | 'publicHoliday' | 'message';
 const DAY_TYPES: DayType[] = ['weekday', 'saturday', 'sunday', 'publicHoliday', 'message'];
@@ -253,7 +253,7 @@ function ShiftCard({
   onEdit: () => void;
   onSwap: () => void;
 }) {
-  const plan = calcShift(shift, wp, 'planned');
+  // Once actual times are entered, the card shows only those: times and breaks as entered
   const eff = calcShift(shift, wp, 'effective');
   const dow = dayOfWeek(shift.date);
   const weekend = dow === 0 || dow === 6;
@@ -266,8 +266,8 @@ function ShiftCard({
       </div>
       <div className="shift-body">
         <div className="shift-time">
-          {fmtTime(shift.start)} – {fmtTime(shift.end)}
-          {shift.end >= 1440 && <span className="muted small"> (+1 day)</span>}
+          {fmtTime(eff.start)} – {fmtTime(eff.end)}
+          {eff.end >= 1440 && <span className="muted small"> (+1 day)</span>}
         </div>
         {showWorkplace && (
           <div className="wp-tag">
@@ -286,25 +286,14 @@ function ShiftCard({
             Paid break {eff.paidBreak}m · Unpaid {eff.unpaidBreak}m
           </span>
         </div>
-        {shift.actual ? (
-          <div className="shift-actual">
-            <CheckIcon size={14} /> Worked {fmtTime(shift.actual.start)}–{fmtTime(shift.actual.end)} · Unpaid {shift.actual.unpaidBreak}m ·{' '}
-            {fmtDuration(eff.workedMinutes)}
-            {eff.workedMinutes !== plan.workedMinutes && (
-              <span className={eff.workedMinutes > plan.workedMinutes ? 'up' : 'down'}>
-                {' '}
-                ({eff.workedMinutes > plan.workedMinutes ? '+' : ''}
-                {eff.workedMinutes - plan.workedMinutes}m)
-              </span>
-            )}
-            {eff.missedBreakMinutes > 0 && <span className="missed"> · Missed break +{eff.missedBreakMinutes}m paid</span>}
-          </div>
+        {eff.usedActual ? (
+          eff.missedBreakMinutes > 0 && <div className="shift-actual missed">Missed break +{eff.missedBreakMinutes}m paid</div>
         ) : (
           <div className="shift-todo">
             <ClockIcon size={14} /> Log actual times after your shift
           </div>
         )}
-        {shift.alt && shift.alt.source !== shift.source && (
+        {!eff.usedActual && shift.alt && shift.alt.source !== shift.source && (
           <button
             className="alt-chip"
             onClick={(e) => {

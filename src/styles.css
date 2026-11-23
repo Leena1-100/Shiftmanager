@@ -2292,3 +2292,18 @@ input[type='date']::-webkit-date-and-time-value {
   background: color-mix(in srgb, var(--c, var(--mint)) 14%, #fff);
   color: color-mix(in srgb, var(--c, var(--mint)) 80%, #000);
 }
+
+/* Source tags: Tanda in mint, Cash in violet (apart from the orange and blue used elsewhere) */
+.badge.tanda {
+  background: var(--mint-soft);
+  color: var(--mint-strong);
+}
+
+.badge.message {
+  background: #f1ecff;
+  color: #7a4fe0;
+}
+
+.shift-pay .untaxed {
+  color: #7a4fe0;
+}

@@ -1,5 +1,5 @@
 import type { Settings, Shift, Source, WeekMeta, Workplace } from '../types';
-import { payslipMismatch, weekMoney } from '../lib/payslip';
+import { cashPaid, payslipMismatch, weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { WEEKDAY_SHORT, dayOfWeek, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
@@ -220,7 +220,7 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
                             </span>
                           </span>
                           <span>{+(g.minutes / 60).toFixed(2)} hrs</span>
-                          <b>{fmtMoney(g.pay)}</b>
+                          <b>{fmtMoney(d === 'message' ? cashPaid(g.pay) : g.pay)}</b>
                         </li>
                       );
                     })}

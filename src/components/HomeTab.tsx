@@ -3,7 +3,7 @@ import { weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { WEEKDAY_SHORT, dayOfWeek, fmtCash, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
-import { PlusIcon, SwapIcon } from './Icons';
+import { ImportIcon, PlusIcon, SwapIcon } from './Icons';
 
 export const SOURCE_LABEL: Record<Source, string> = { tanda: 'Tanda', message: 'Cash', manual: 'Manual' };
 
@@ -129,9 +129,14 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onEdit
 
       <div className="section-head">
         <h2>Shifts</h2>
-        <button className="ghost-btn" onClick={onAdd}>
-          <PlusIcon size={16} /> Add shift
-        </button>
+        <div className="inline">
+          <button className="ghost-btn" onClick={onGoImport}>
+            <ImportIcon size={16} /> Roster
+          </button>
+          <button className="ghost-btn" onClick={onAdd}>
+            <PlusIcon size={16} /> Add shift
+          </button>
+        </div>
       </div>
 
       {shifts.length === 0 ? (

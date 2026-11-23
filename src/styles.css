@@ -2072,3 +2072,217 @@ input[type='date']::-webkit-date-and-time-value {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* ---------- Month calendar (workplace colours, hours per shift) ---------- */
+.mc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mc-chips {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mc-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.mc-chip {
+  flex: none;
+  border-radius: 99px;
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  background: var(--c);
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.mc-chip span {
+  opacity: 0.8;
+  margin-left: 2px;
+}
+
+.mc-chip.off {
+  opacity: 0.35;
+}
+
+.mc-total {
+  font-weight: 800;
+  font-size: 22px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-cal {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.mc-dow,
+.mc-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.mc-dow {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sub);
+  padding: 10px 0 6px;
+}
+
+.mc-dow .sat,
+.mc-num.sat {
+  color: var(--tanda);
+}
+
+.mc-dow .sun,
+.mc-num.sun {
+  color: var(--danger);
+}
+
+.mc-week {
+  border-top: 1px solid var(--line);
+}
+
+.mc-wbar {
+  text-align: right;
+  padding: 5px 8px 0;
+  font-size: 11px;
+  color: var(--sub);
+}
+
+.mc-wbar b {
+  color: var(--text);
+}
+
+.mc-day {
+  min-height: 88px;
+  min-width: 0;
+  padding: 4px 3px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  text-align: left;
+  border-right: 1px solid #f1f5f4;
+  border-radius: 10px;
+}
+
+.mc-day:last-child {
+  border-right: 0;
+}
+
+.mc-day.out {
+  opacity: 0.35;
+}
+
+.mc-day.today {
+  background: var(--mint-softer);
+  box-shadow: inset 0 0 0 2px var(--mint);
+}
+
+.mc-day.selected {
+  background: var(--mint-soft);
+}
+
+.mc-num {
+  font-size: 13px;
+  font-weight: 700;
+  padding-left: 2px;
+}
+
+.mc-pill {
+  background: var(--c);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mc-pill.cash {
+  background: color-mix(in srgb, var(--c) 18%, #fff);
+  color: color-mix(in srgb, var(--c) 75%, #000);
+  box-shadow: inset 0 0 0 1.5px var(--c);
+}
+
+.mc-pay {
+  margin-top: auto;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-pay small {
+  font-size: 8.5px;
+}
+
+.mc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--sub);
+}
+
+.mc-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+.mc-legend i.cash {
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--mint);
+}
+
+/* Fit "8h 47m" in a phone-width day cell */
+.mc-cal {
+  margin: 0 -4px;
+}
+
+.mc-day {
+  padding: 4px 2px 5px;
+  border-radius: 0;
+}
+
+.mc-day.today,
+.mc-day.selected {
+  border-radius: 10px;
+}
+
+.mc-pill {
+  font-size: 10px;
+  letter-spacing: -0.3px;
+  padding: 3px 2px;
+  text-align: center;
+  text-overflow: clip;
+}
+
+@media (max-width: 400px) {
+  .mc-pill {
+    font-size: clamp(8px, 2.45vw, 10px);
+    letter-spacing: -0.4px;
+    padding: 3px 1px;
+  }
+}

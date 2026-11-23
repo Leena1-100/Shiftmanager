@@ -143,7 +143,6 @@ export default function App() {
             state={state}
             onEdit={(s) => setEditing({ shift: s, date: s.date })}
             onAdd={(date) => setEditing({ shift: null, date })}
-            onImportWeek={setImportWeek}
           />
         )}
         {tab === 'history' && (

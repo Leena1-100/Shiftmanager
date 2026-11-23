@@ -1936,3 +1936,7 @@ a.link {
 .hero-lines span {
   opacity: 0.9;
 }
+
+.hero .payslip-row .mismatch {
+  color: #fff3c4;
+}

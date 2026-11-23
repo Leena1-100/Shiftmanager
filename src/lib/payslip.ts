@@ -12,6 +12,11 @@ const MONEY_RE = /-?\$?\s?\d{1,3}(?:,\d{3})*\.\d{2}(?!\d)/g;
 
 const money = (s: string) => Number(s.replace(/[$,\s]/g, ''));
 
+/** Earnings and allowance lines, which list their own amounts */
+const ALLOWANCE_RE = /allowance|laundry|uniform|meal\s+money|ordinary|overtime|penalty|loading|reimburse/i;
+/** A line holding only amounts (an OCR'd table column), e.g. "58.00" or "$662.94 $10,155.40" */
+const NUMBERS_ONLY_RE = /^[\s$\d.,()-]+$/;
+
 const LABELS: { key: 'gross' | 'tax' | 'net' | 'super'; re: RegExp; skip?: RegExp }[] = [
   { key: 'gross', re: /gross(?:\s+(?:pay|earnings|wages|income|amount))?|total\s+earnings|total\s+pay\b/i, skip: /ytd\s*gross/i },
   { key: 'tax', re: /payg|tax\s*(?:withheld|deducted)|withholding|income\s+tax|^\s*tax\b/i, skip: /taxable|pre-?tax|after\s+tax/i },
@@ -48,8 +53,12 @@ export function parsePayslip(text: string): Partial<Payslip> {
       if (found[key] !== undefined || skip?.test(line)) continue;
       const m = re.exec(line);
       if (!m) continue;
+      // Allowance and earnings lines (e.g. "Laundry Allowance 3 1.28 3.84") never hold gross, tax or net
+      if (key !== 'super' && ALLOWANCE_RE.test(line)) continue;
       const after = line.slice(m.index + m[0].length);
-      const amounts = after.match(MONEY_RE) ?? (lines[i + 1] && !LABELS.some((l) => l.re.test(lines[i + 1])) ? lines[i + 1].match(MONEY_RE) : null);
+      // When the amount isn't on the label's line, only a line of bare numbers below it counts
+      const next = lines[i + 1];
+      const amounts = after.match(MONEY_RE) ?? (next && NUMBERS_ONLY_RE.test(next) ? next.match(MONEY_RE) : null);
       if (amounts) found[key] = Math.abs(money(amounts[0]));
     }
     if (/pay\s*date|payment\s+date|paid\s+on|date\s+paid/i.test(line) && !found.payDate) {
@@ -76,6 +85,15 @@ export function parsePayslip(text: string): Partial<Payslip> {
     // No labelled period: the first two dates that aren't the pay date
     const ds = lines.flatMap(datesIn).filter((d) => d !== found.payDate);
     if (ds.length >= 2) [found.periodStart, found.periodEnd] = ds;
+  }
+  // Cross-check: gross - tax should equal net. If the tax read doesn't fit, use the amount on the
+  // payslip that does (the real tax line), so a mis-read never sticks
+  if (found.gross !== undefined && found.net !== undefined) {
+    const target = Math.round((found.gross - found.net) * 100) / 100;
+    if (found.tax === undefined || Math.abs(found.gross - found.tax - found.net) > 0.05) {
+      const all = lines.flatMap((l) => l.match(MONEY_RE) ?? []).map((a) => Math.abs(money(a)));
+      if (all.some((a) => Math.abs(a - target) < 0.01)) found.tax = target;
+    }
   }
   if (found.net === undefined && found.gross !== undefined && found.tax !== undefined) {
     found.net = Math.round((found.gross - found.tax) * 100) / 100;
@@ -119,4 +137,11 @@ export function weekMoney(sum: WeekSummary, meta: WeekMeta | undefined, taxMode:
     appTanda,
     diff: Math.round((p.gross - appTanda) * 100) / 100,
   };
+}
+
+/** Gross minus tax doesn't match net: usually a mis-read tax (other deductions are rare) */
+export function payslipMismatch(p: Payslip): number | null {
+  if (p.net === undefined) return null;
+  const expectedTax = Math.round((p.gross - p.net) * 100) / 100;
+  return Math.abs(expectedTax - p.tax) > 0.05 ? expectedTax : null;
 }

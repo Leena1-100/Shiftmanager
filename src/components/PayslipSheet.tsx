@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Payslip, Settings, Shift, Workplace } from '../types';
 import { summarize } from '../lib/pay';
-import { parsePayslip, weekMoney } from '../lib/payslip';
+import { parsePayslip, payslipMismatch, weekMoney } from '../lib/payslip';
 import { imageToText } from '../lib/ocr';
 import { addDays, fmtDateShort, fmtMoney, weekStartOf } from '../lib/time';
 import { CloseIcon, ImageIcon } from './Icons';
@@ -58,6 +58,8 @@ export default function PayslipSheet({ weekStart, existing, shifts, workplaces, 
   const tax = num('tax');
   const valid = gross !== undefined && !Number.isNaN(gross) && tax !== undefined && !Number.isNaN(tax);
   const diff = gross !== undefined ? Math.round((gross - app.appTanda) * 100) / 100 : 0;
+  const netValue = num('net');
+  const fixTax = valid && netValue !== undefined ? payslipMismatch({ gross: gross!, tax: tax!, net: netValue }) : null;
 
   const fill = (raw: string) => {
     const p = parsePayslip(raw);
@@ -179,6 +181,17 @@ export default function PayslipSheet({ weekStart, existing, shifts, workplaces, 
             <span>Pay date</span>
             <input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
           </label>
+          {fixTax !== null && (
+            <div className="confirm-box">
+              <p className="small">
+                <b>Gross − tax doesn't equal net pay.</b> Going by gross and net, the tax should be {fmtMoney(fixTax)}, not {fmtMoney(tax!)}.
+                The tax may have been read from another line, such as an allowance.
+              </p>
+              <button className="primary" onClick={() => setValues((v) => ({ ...v, tax: String(fixTax) }))}>
+                Use {fmtMoney(fixTax)} as tax
+              </button>
+            </div>
+          )}
           {targetWeek !== weekStart && (
             <p className="small warn-text">This pay period is in the week of {fmtDateShort(targetWeek)}, so it will be saved there.</p>
           )}

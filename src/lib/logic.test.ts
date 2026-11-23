@@ -5,7 +5,7 @@ import { mergeShifts, swapAlt } from './merge';
 import { weeklyWithholding, annualTax } from './tax';
 import { FAST_FOOD_BREAK_TIERS as DEFAULT_BREAK_TIERS, LEGACY_BREAK_TIERS, applyAward, awardMinimumRate, newWorkplace } from './defaults';
 import { reviveState } from './storage';
-import { parsePayslip, weekMoney } from './payslip';
+import { parsePayslip, payslipMismatch, weekMoney } from './payslip';
 import type { Shift } from '../types';
 
 const WEEK = '2026-10-26'; // Monday
@@ -592,5 +592,33 @@ Net pay
 
     const actual = weekMoney(sum, { payslip: { gross: 230, tax: 0, net: 230 } }, 'resident-tft');
     expect(actual).toMatchObject({ fromPayslip: true, gross: 419, tax: 0, net: 419, cash: 189, appTanda: 229.32, diff: 0.68 });
+  });
+});
+
+describe('payslip tax is never read from an allowance line', () => {
+  it('table where the tax amount sits on its own line below the label', () => {
+    const text = `Pay period 16/11/2026 - 22/11/2026
+Earnings Hours Rate Amount
+Ordinary Hours 23.70 27.81 659.10
+PAYG Tax
+Laundry Allowance 3.00 1.28 3.84
+Gross Pay 662.94
+58.00
+Net Pay 604.94`;
+    expect(parsePayslip(text)).toMatchObject({ gross: 662.94, tax: 58, net: 604.94 });
+  });
+
+  it('tax label with the laundry line directly underneath', () => {
+    const text = `Gross Pay $662.94
+Tax
+Laundry Allowance $3.84
+Deductions PAYG $58.00
+Net Pay $604.94`;
+    expect(parsePayslip(text)).toMatchObject({ gross: 662.94, tax: 58, net: 604.94 });
+  });
+
+  it('flags a saved payslip whose tax does not fit gross - net', () => {
+    expect(payslipMismatch({ gross: 662.94, tax: 3.84, net: 604.94 })).toBe(58);
+    expect(payslipMismatch({ gross: 662.94, tax: 58, net: 604.94 })).toBeNull();
   });
 });

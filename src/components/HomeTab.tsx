@@ -1,5 +1,5 @@
 import type { Settings, Shift, Source, WeekMeta, Workplace } from '../types';
-import { weekMoney } from '../lib/payslip';
+import { payslipMismatch, weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { taxFreeRoom, WEEKLY_TAX_FREE } from '../lib/tax';
@@ -93,7 +93,12 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
             {fromPayslip ? (
               <>
                 <span>
-                  ✓ Payslip added
+                  {weekMeta?.payslip && payslipMismatch(weekMeta.payslip) !== null ? (
+                    <span className="mismatch">⚠ Check the payslip tax · </span>
+                  ) : (
+                    '✓ '
+                  )}
+                  Payslip added
                   {Math.abs(money.diff) < 0.01
                     ? ' · matches the app'
                     : ` · ${money.diff > 0 ? '+' : '−'}${fmtMoney(Math.abs(money.diff))} vs app`}

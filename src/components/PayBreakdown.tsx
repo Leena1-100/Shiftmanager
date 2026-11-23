@@ -182,7 +182,7 @@ export default function PayBreakdown({ shift, wp, workplaces, allShifts, setting
       <div className="bd-section">
         <div className="bd-head">Tax &amp; super</div>
         {untaxed ? (
-          <p className="small muted">Message roster: no tax or super taken off. The button below switches this shift to award pay with tax.</p>
+          <p className="small muted">No tax or super taken off.</p>
         ) : (
           <>
             <div className="bd-row">

@@ -6,7 +6,7 @@ import { newId } from '../lib/merge';
 import ConfirmButton from './ConfirmButton';
 import PayBreakdown from './PayBreakdown';
 import { messageRate } from '../lib/defaults';
-import { fmtDateLong, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM } from '../lib/time';
+import { fmtDateLong, fmtDuration, fmtMoney, fmtTime, normalizeRange, parseHHMM, todayISO } from '../lib/time';
 
 interface Props {
   shift: Shift | null;
@@ -21,74 +21,74 @@ interface Props {
 
 const num = (v: string) => Math.max(0, Math.round(Number(v) || 0));
 
+/**
+ * One set of times for a shift. Up to today they are the hours actually worked; for a future
+ * date they are the roster. The fields start from what was worked, or the roster if nothing was logged.
+ */
 export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts, settings, onClose, onSave, onDelete }: Props) {
   const [workplaceId, setWorkplaceId] = useState(
     workplaces.find((w) => w.id === shift?.workplaceId)?.id ?? workplaces[0].id,
   );
   const wp = workplaces.find((w) => w.id === workplaceId) ?? workplaces[0];
-  const [date, setDate] = useState(shift?.date ?? defaultDate);
-  const [start, setStart] = useState(fmtTime(shift?.start ?? 9 * 60));
-  const [end, setEnd] = useState(fmtTime(shift?.end ?? 15 * 60));
-  const [breakAuto, setBreakAuto] = useState(shift?.unpaidBreak === undefined);
-  const [unpaid, setUnpaid] = useState(String(shift?.unpaidBreak ?? 30));
+  const a = shift?.actual;
+  const init = {
+    date: shift?.date ?? defaultDate,
+    start: fmtTime(a?.start ?? shift?.start ?? 9 * 60),
+    end: fmtTime(a?.end ?? shift?.end ?? 15 * 60),
+    unpaid: a ? String(a.unpaidBreak) : shift?.unpaidBreak !== undefined ? String(shift.unpaidBreak) : '',
+    paid: a ? String(a.paidBreak) : '',
+  };
+  const [date, setDate] = useState(init.date);
+  const [start, setStart] = useState(init.start);
+  const [end, setEnd] = useState(init.end);
+  const [unpaid, setUnpaid] = useState(init.unpaid);
+  const [paid, setPaid] = useState(init.paid);
   const [ph, setPh] = useState(!!shift?.publicHoliday);
   const [note, setNote] = useState(shift?.note ?? '');
-
-  const [hasActual, setHasActual] = useState(!!shift?.actual);
-  const [aStart, setAStart] = useState(fmtTime(shift?.actual?.start ?? shift?.start ?? 9 * 60));
-  const [aEnd, setAEnd] = useState(fmtTime(shift?.actual?.end ?? shift?.end ?? 15 * 60));
-  const [aUnpaid, setAUnpaid] = useState(String(shift?.actual?.unpaidBreak ?? ''));
-  const [aPaid, setAPaid] = useState(String(shift?.actual?.paidBreak ?? ''));
-  const [useTanda, setUseTanda] = useState(!!shift?.tandaPay);
   const [applyTax, setApplyTax] = useState(!!shift?.applyTax);
 
+  const future = date > todayISO();
   const ps = parseHHMM(start);
   const pe = parseHHMM(end);
   const valid = ps !== null && pe !== null && !!date;
   const [s0, e0] = valid ? normalizeRange(ps, pe) : [0, 0];
   const rule = breaksFor(e0 - s0, wp.breakTiers);
-
-  const as = parseHHMM(aStart);
-  const ae = parseHHMM(aEnd);
-  const actualValid = !hasActual || (as !== null && ae !== null);
+  // Tanda's pay stays only while the worked times are the ones it was read with
+  const timesUnchanged =
+    date === init.date && start === init.start && end === init.end && unpaid === init.unpaid && paid === init.paid;
 
   const build = (): Shift | null => {
-    if (!valid || !actualValid) return null;
-    let actual: Shift['actual'];
-    if (hasActual) {
-      const [a1, a2] = normalizeRange(as!, ae!);
-      const aRule = breaksFor(a2 - a1, wp.breakTiers);
-      actual = {
-        start: a1,
-        end: a2,
-        unpaidBreak: aUnpaid === '' ? aRule.unpaidMinutes : num(aUnpaid),
-        paidBreak: aPaid === '' ? aRule.paidMinutes : num(aPaid),
-      };
-    }
-    const sources = shift?.sources ?? ['manual'];
-    return {
+    if (!valid) return null;
+    const unpaidMin = unpaid.trim() === '' ? rule.unpaidMinutes : num(unpaid);
+    const paidMin = paid.trim() === '' ? rule.paidMinutes : num(paid);
+    const base = {
       id: shift?.id ?? newId(),
       date,
-      start: s0,
-      end: e0,
-      source: shift?.source ?? 'manual',
-      sources,
+      source: shift?.source ?? ('manual' as const),
+      sources: shift?.sources ?? ['manual' as const],
       workplaceId: wp.id,
-      unpaidBreak: breakAuto ? undefined : num(unpaid),
       publicHoliday: ph || undefined,
       note: note.trim() || undefined,
-      actual,
-      tandaPay: hasActual && useTanda ? shift?.tandaPay : undefined,
       applyTax: applyTax || undefined,
       alt: shift?.alt,
+    };
+    if (future) {
+      // Upcoming: the times are the roster
+      return { ...base, start: s0, end: e0, unpaidBreak: unpaid.trim() === '' ? undefined : unpaidMin };
+    }
+    // Worked: keep the original roster for reference, the times entered are what was worked
+    return {
+      ...base,
+      start: shift?.start ?? s0,
+      end: shift?.end ?? e0,
+      unpaidBreak: shift ? shift.unpaidBreak : unpaid.trim() === '' ? undefined : unpaidMin,
+      actual: { start: s0, end: e0, unpaidBreak: unpaidMin, paidBreak: paidMin },
+      tandaPay: timesUnchanged ? shift?.tandaPay : undefined,
     };
   };
 
   const draft = build();
-  const planCalc = draft && calcShift(draft, wp, 'planned');
-  const effCalc = draft && calcShift(draft, wp, 'effective');
-  const aSpan = as !== null && ae !== null ? normalizeRange(as, ae) : null;
-  const aRule = aSpan ? breaksFor(aSpan[1] - aSpan[0], wp.breakTiers) : null;
+  const calc = draft && calcShift(draft, wp, 'effective');
 
   return (
     <SheetBackdrop onClose={onClose}>
@@ -110,7 +110,6 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
         )}
 
         <div className="group">
-          <div className="group-title">Rostered shift</div>
           <label className="field">
             <span>Date</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -125,18 +124,17 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
               <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
             </label>
           </div>
-          <div className="field">
-            <span>Unpaid break</span>
-            <div className="inline">
-              <label className="check">
-                <input type="checkbox" checked={breakAuto} onChange={(e) => setBreakAuto(e.target.checked)} />
-                Auto ({rule.unpaidMinutes}m)
+          <div className="row2">
+            <label className="field">
+              <span>Unpaid break (min)</span>
+              <input inputMode="numeric" placeholder={`Auto ${rule.unpaidMinutes}`} value={unpaid} onChange={(e) => setUnpaid(e.target.value)} />
+            </label>
+            {!future && (
+              <label className="field">
+                <span>Paid break (min)</span>
+                <input inputMode="numeric" placeholder={`Auto ${rule.paidMinutes}`} value={paid} onChange={(e) => setPaid(e.target.value)} />
               </label>
-              {!breakAuto && (
-                <input className="num" inputMode="numeric" value={unpaid} onChange={(e) => setUnpaid(e.target.value)} aria-label="Unpaid break (minutes)" />
-              )}
-              {!breakAuto && <span className="muted">min</span>}
-            </div>
+            )}
           </div>
           <label className="check">
             <input type="checkbox" checked={ph} onChange={(e) => setPh(e.target.checked)} />
@@ -144,77 +142,11 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
           </label>
           <label className="field">
             <span>Note</span>
-            <input value={note} placeholder="e.g. covering for Sam" onChange={(e) => setNote(e.target.value)} />
+            <input value={note} onChange={(e) => setNote(e.target.value)} />
           </label>
-          {planCalc && (
+          {calc && (
             <p className="calc-line">
-              {fmtDuration(planCalc.workedMinutes)} paid · paid break {planCalc.paidBreak}m · <b>{fmtMoney(planCalc.pay)}</b>
-            </p>
-          )}
-        </div>
-
-        <div className="group mint">
-          <div className="group-title">
-            Actual hours (to the minute)
-            <label className="switch">
-              <input type="checkbox" checked={hasActual} onChange={(e) => setHasActual(e.target.checked)} aria-label="Log actual hours" />
-              <span />
-            </label>
-          </div>
-          {hasActual ? (
-            <>
-              <div className="row2">
-                <label className="field">
-                  <span>Clock in</span>
-                  <input type="time" value={aStart} onChange={(e) => setAStart(e.target.value)} />
-                </label>
-                <label className="field">
-                  <span>Clock out</span>
-                  <input type="time" value={aEnd} onChange={(e) => setAEnd(e.target.value)} />
-                </label>
-              </div>
-              <div className="row2">
-                <label className="field">
-                  <span>Unpaid break (min)</span>
-                  <input inputMode="numeric" placeholder={`Auto ${aRule?.unpaidMinutes ?? 0}`} value={aUnpaid} onChange={(e) => setAUnpaid(e.target.value)} />
-                </label>
-                <label className="field">
-                  <span>Paid break (min)</span>
-                  <input inputMode="numeric" placeholder={`Auto ${aRule?.paidMinutes ?? 0}`} value={aPaid} onChange={(e) => setAPaid(e.target.value)} />
-                </label>
-              </div>
-              <div className="inline wrap">
-                <p className="small muted grow">Missed a break? Set it to 0 and the missed time is paid on top, like Tanda: 10 min for a paid break, 30 min for a meal break.</p>
-                {aPaid !== '0' && (
-                  <button type="button" className="ghost-btn" onClick={() => setAPaid('0')}>
-                    Missed paid break
-                  </button>
-                )}
-              </div>
-              {effCalc && planCalc && (
-                <p className="calc-line">
-                  Actual {fmtDuration(effCalc.workedMinutes)}
-                  {effCalc.missedBreakMinutes > 0 && ` + ${effCalc.missedBreakMinutes}m missed break`} · <b>{fmtMoney(effCalc.pay)}</b>
-                  {effCalc.pay !== planCalc.pay && (
-                    <span className={effCalc.pay > planCalc.pay ? 'up' : 'down'}>
-                      {' '}
-                      ({effCalc.pay > planCalc.pay ? '+' : ''}
-                      {fmtMoney(effCalc.pay - planCalc.pay)})
-                    </span>
-                  )}
-                </p>
-              )}
-              {shift?.tandaPay && (
-                <label className="check wrap-text">
-                  <input type="checkbox" checked={useTanda} onChange={(e) => setUseTanda(e.target.checked)} />
-                  Use Tanda's pay ({shift.tandaPay.hours} hrs | {fmtMoney(shift.tandaPay.pay)}) instead of calculating
-                </label>
-              )}
-            </>
-          ) : (
-            <p className="small muted">
-              After your shift, turn this on and adjust the clock-in/out and break minutes. Times start at the roster, so you only
-              change what was different.
+              {fmtDuration(calc.workedMinutes)} paid · <b>{fmtMoney(calc.pay)}</b>
             </p>
           )}
         </div>
@@ -226,9 +158,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
             <div>
               <b>{applyTax ? 'Award pay with tax & super' : 'Flat rate, no tax or super'}</b>
               <p className="small muted">
-                {applyTax
-                  ? 'Paid like a normal shift: weekend rates, laundry and tax & super.'
-                  : `Paid hours × ${fmtMoney(messageRate(wp, date, ph))}, with nothing added and nothing taken off.`}
+                {applyTax ? 'Weekend rates, laundry and tax & super.' : `Paid hours × ${fmtMoney(messageRate(wp, date, ph))}`}
               </p>
             </div>
             <button type="button" className={applyTax ? 'secondary' : 'primary'} onClick={() => setApplyTax(!applyTax)}>
@@ -238,9 +168,7 @@ export default function ShiftEditor({ shift, defaultDate, workplaces, allShifts,
         )}
 
         <div className="sheet-actions">
-          {shift && (
-            <ConfirmButton label="Delete" confirmLabel="Tap again to delete" onConfirm={() => onDelete(shift.id)} />
-          )}
+          {shift && <ConfirmButton label="Delete" confirmLabel="Tap again to delete" onConfirm={() => onDelete(shift.id)} />}
           <button className="secondary" onClick={onClose}>
             Cancel
           </button>

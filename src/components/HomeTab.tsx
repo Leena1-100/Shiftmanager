@@ -3,7 +3,7 @@ import { weekMoney } from '../lib/payslip';
 import { calcShift, isUntaxed, summarize, workplaceFor } from '../lib/pay';
 import { swapAlt } from '../lib/merge';
 import { WEEKDAY_SHORT, dayOfWeek, fmtCash, fmtDateShort, fmtDuration, fmtMoney, fmtTime } from '../lib/time';
-import { PlusIcon, SwapIcon, ClockIcon } from './Icons';
+import { PlusIcon, SwapIcon } from './Icons';
 
 export const SOURCE_LABEL: Record<Source, string> = { tanda: 'Tanda', message: 'Message', manual: 'Manual' };
 
@@ -234,12 +234,8 @@ function ShiftCard({
             Paid break {eff.paidBreak}m · Unpaid {eff.unpaidBreak}m
           </span>
         </div>
-        {eff.usedActual ? (
-          eff.missedBreakMinutes > 0 && <div className="shift-actual missed">Missed break +{eff.missedBreakMinutes}m paid</div>
-        ) : (
-          <div className="shift-todo">
-            <ClockIcon size={14} /> Log actual times after your shift
-          </div>
+        {eff.usedActual && eff.missedBreakMinutes > 0 && (
+          <div className="shift-actual missed">Missed break +{eff.missedBreakMinutes}m paid</div>
         )}
         {!eff.usedActual && shift.alt && shift.alt.source !== shift.source && (
           <button

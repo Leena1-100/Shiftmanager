@@ -29,6 +29,8 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenPayslip, onOpenW
     const w = weekStartOf(s.date, settings.weekStartDay);
     groups.set(w, [...(groups.get(w) ?? []), s]);
   }
+  // A week with a payslip counts even if no shifts were entered for it
+  for (const [w, meta] of Object.entries(metas)) if (meta.payslip && !groups.has(w)) groups.set(w, []);
   const weeks = [...groups.entries()]
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([start, list]) => {

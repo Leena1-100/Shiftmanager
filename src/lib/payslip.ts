@@ -120,10 +120,14 @@ export interface WeekMoney {
   tax: number;
   /** Take-home: payslip net (or Tanda minus estimated tax) plus cash shifts */
   net: number;
-  /** Cash shifts as actually handed over for the week (second decimal place dropped) */
+  /** Cash for the week: the amount received when entered, otherwise the expected payout */
   cash: number;
   /** Cash shifts added up to the cent, before the cents digit is dropped */
   cashExact: number;
+  /** What the cash shifts should pay this week (cents digit dropped) */
+  cashExpected: number;
+  /** Cash received minus expected: + got more, − got less (0 when not entered) */
+  cashDiff: number;
   fromPayslip: boolean;
   /** The app's own Tanda total, to compare with the payslip */
   appTanda: number;
@@ -140,12 +144,27 @@ export function cashPaid(total: number): number {
 export function weekMoney(sum: WeekSummary, meta: WeekMeta | undefined, taxMode: TaxMode): WeekMoney {
   const appTanda = taxableGross(sum);
   const cashExact = Math.round((sum.gross - appTanda) * 100) / 100;
-  const cash = cashPaid(cashExact);
+  const cashExpected = cashPaid(cashExact);
+  // What was actually handed over, when it was entered for the week
+  const cash = meta?.cashReceived ?? cashExpected;
+  const cashDiff = Math.round((cash - cashExpected) * 100) / 100;
   const p = meta?.payslip;
   if (!p) {
     const tax = weeklyWithholding(appTanda, taxMode);
     const gross = Math.round((appTanda + cash) * 100) / 100;
-    return { gross, tandaGross: appTanda, tax, net: Math.round((gross - tax) * 100) / 100, cash, cashExact, fromPayslip: false, appTanda, diff: 0 };
+    return {
+      gross,
+      tandaGross: appTanda,
+      tax,
+      net: Math.round((gross - tax) * 100) / 100,
+      cash,
+      cashExact,
+      cashExpected,
+      cashDiff,
+      fromPayslip: false,
+      appTanda,
+      diff: 0,
+    };
   }
   const net = p.net ?? p.gross - p.tax;
   return {
@@ -155,6 +174,8 @@ export function weekMoney(sum: WeekSummary, meta: WeekMeta | undefined, taxMode:
     net: Math.round((net + cash) * 100) / 100,
     cash,
     cashExact,
+    cashExpected,
+    cashDiff,
     fromPayslip: true,
     appTanda,
     diff: Math.round((p.gross - appTanda) * 100) / 100,

@@ -132,6 +132,8 @@ export interface WeekMeta {
   receivedAmount?: number;
   note?: string;
   payslip?: Payslip;
+  /** Cash actually handed over this week, when it differs from what the cash shifts add up to */
+  cashReceived?: number;
 }
 
 export interface AppState {

@@ -673,3 +673,22 @@ describe('weekly cash payout', () => {
     expect(m).toMatchObject({ cashExact: 177.75, cash: 177.7, gross: 177.7, net: 177.7 });
   });
 });
+
+describe('cash received for the week', () => {
+  const wp = { ...newWorkplace(0), id: 'w' };
+  const sun: Shift = { id: 's', date: '2026-11-22', start: hm(9), end: hm(16, 5), source: 'message', sources: ['message'], workplaceId: 'w',
+    actual: { start: hm(9), end: hm(16, 5), paidBreak: 10, unpaidBreak: 30 } };
+  const sum = summarize([sun], [wp], 'effective');
+
+  it('more cash than expected shows as a + difference', () => {
+    expect(weekMoney(sum, { cashReceived: 190 }, 'resident-tft')).toMatchObject({ cashExpected: 177.7, cash: 190, cashDiff: 12.3, gross: 190 });
+  });
+
+  it('less cash than expected shows as a − difference', () => {
+    expect(weekMoney(sum, { cashReceived: 170 }, 'resident-tft')).toMatchObject({ cash: 170, cashDiff: -7.7 });
+  });
+
+  it('without an entry the expected payout is used', () => {
+    expect(weekMoney(sum, {}, 'resident-tft')).toMatchObject({ cash: 177.7, cashDiff: 0 });
+  });
+});

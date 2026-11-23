@@ -180,6 +180,13 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenPayslip, onOpenW
                       )}
                       Payslip: gross {fmtMoney(w.money.tandaGross)} · tax −{fmtMoney(w.money.tax)}
                       {w.money.cash > 0 && ` · cash ${fmtCash(w.money.cash)}`}
+                      {w.money.cashDiff !== 0 && (
+                        <span className={w.money.cashDiff > 0 ? 'up' : 'down'}>
+                          {' '}
+                          ({w.money.cashDiff > 0 ? '+' : '−'}
+                          {fmtCash(Math.abs(w.money.cashDiff))})
+                        </span>
+                      )}
                       {Math.abs(w.money.diff) >= 0.01 && (
                         <span className="mismatch">
                           {' '}
@@ -192,8 +199,17 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenPayslip, onOpenW
                   </button>
                 ) : (
                   <button className="payslip-row light" onClick={() => onOpenPayslip(w.start)}>
-                    <span>No payslip yet</span>
-                    <span className="payslip-edit">Add payslip</span>
+                    <span>
+                      No payslip yet
+                      {w.money.cashDiff !== 0 && (
+                        <span className={w.money.cashDiff > 0 ? 'up' : 'down'}>
+                          {' '}
+                          · cash {fmtCash(w.money.cash)} ({w.money.cashDiff > 0 ? '+' : '−'}
+                          {fmtCash(Math.abs(w.money.cashDiff))})
+                        </span>
+                      )}
+                    </span>
+                    <span className="payslip-edit">{w.money.cash > 0 ? 'Edit' : 'Add payslip'}</span>
                   </button>
                 )}
                 <span className="small muted">

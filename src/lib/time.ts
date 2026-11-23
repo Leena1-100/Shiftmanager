@@ -71,9 +71,12 @@ export function fmtMoney(n: number): string {
   return `${sign}$${Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-/** Weekly cash payout, which has no cents digit: $406.9 */
+/** Cash amounts: one decimal place when there's no cents digit ($406.9), otherwise two ($406.95) */
 export function fmtCash(n: number): string {
-  return `$${n.toLocaleString('en-AU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+  const sign = n < 0 ? '-' : '';
+  const a = Math.abs(n);
+  const digits = Math.round(a * 100) % 10 === 0 ? 1 : 2;
+  return `${sign}$${a.toLocaleString('en-AU', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 }
 
 export function fmtDateShort(iso: string): string {

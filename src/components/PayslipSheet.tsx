@@ -4,17 +4,20 @@ import { summarize } from '../lib/pay';
 import { parsePayslip, payslipMismatch, weekMoney } from '../lib/payslip';
 import { isTemplatePayslip } from '../lib/payslipTemplate';
 import { imageToText } from '../lib/ocr';
-import { addDays, fmtDateShort, fmtMoney, weekStartOf } from '../lib/time';
+import { addDays, fmtCash, fmtDateShort, fmtMoney, weekStartOf } from '../lib/time';
 import { CloseIcon, ImageIcon } from './Icons';
 import ConfirmButton from './ConfirmButton';
 
 interface Props {
   weekStart: string;
   existing?: Payslip;
+  /** Cash received entered earlier for this week */
+  existingCash?: number;
   shifts: Shift[];
   workplaces: Workplace[];
   settings: Settings;
-  onSave: (weekStart: string, payslip: Payslip) => void;
+  /** payslip: undefined when only cash changed. cashReceived: null clears it, undefined leaves it */
+  onSave: (weekStart: string, payslip: Payslip | undefined, cashReceived: number | null | undefined) => void;
   onDelete: (weekStart: string) => void;
   onClose: () => void;
 }
@@ -30,7 +33,7 @@ const FIELDS: { key: Field; label: string; hint?: string }[] = [
 
 const asText = (n: number | undefined) => (n === undefined ? '' : String(n));
 
-export default function PayslipSheet({ weekStart, existing, shifts, workplaces, settings, onSave, onDelete, onClose }: Props) {
+export default function PayslipSheet({ weekStart, existing, existingCash, shifts, workplaces, settings, onSave, onDelete, onClose }: Props) {
   const [text, setText] = useState('');
   const [values, setValues] = useState<Record<Field, string>>({
     gross: asText(existing?.gross),
@@ -43,6 +46,7 @@ export default function PayslipSheet({ weekStart, existing, shifts, workplaces, 
   const [payDate, setPayDate] = useState(existing?.payDate ?? '');
   const [ocr, setOcr] = useState<number | null>(null);
   const [message, setMessage] = useState('');
+  const [cashText, setCashText] = useState(existingCash === undefined ? '' : String(existingCash));
 
   // A payslip period that falls in another week moves the payslip to that week
   const targetWeek = period.start
@@ -103,19 +107,32 @@ export default function PayslipSheet({ weekStart, existing, shifts, workplaces, 
     }
   };
 
+  // Cash actually received: empty or equal to the expected payout means no change from expected
+  const cashValue = cashText.trim() === '' ? undefined : Number(cashText);
+  const cashValid = cashValue === undefined || (!Number.isNaN(cashValue) && cashValue >= 0);
+  const cashToSave: number | null =
+    cashValue === undefined || Math.abs(cashValue - app.cashExpected) < 0.005 ? null : Math.round(cashValue * 100) / 100;
+  const cashChanged = (cashToSave ?? undefined) !== existingCash;
+  const cashDiff = cashValue !== undefined && !Number.isNaN(cashValue) ? Math.round((cashValue - app.cashExpected) * 100) / 100 : 0;
+  const payslipTouched = Object.values(values).some((v) => v.trim() !== '');
+  const canSave = cashValid && (valid || (!payslipTouched && cashChanged));
+
   const save = () => {
-    if (!valid) return;
+    if (!canSave) return;
     const net = num('net');
-    onSave(targetWeek, {
-      gross: gross!,
-      tax: tax!,
-      net: net ?? Math.round((gross! - tax!) * 100) / 100,
-      super: num('super'),
-      hours: num('hours'),
-      periodStart: period.start || undefined,
-      periodEnd: period.end || undefined,
-      payDate: payDate || undefined,
-    });
+    const payslip: Payslip | undefined = valid
+      ? {
+          gross: gross!,
+          tax: tax!,
+          net: net ?? Math.round((gross! - tax!) * 100) / 100,
+          super: num('super'),
+          hours: num('hours'),
+          periodStart: period.start || undefined,
+          periodEnd: period.end || undefined,
+          payDate: payDate || undefined,
+        }
+      : undefined;
+    onSave(targetWeek, payslip, cashChanged ? cashToSave : undefined);
   };
 
   return (
@@ -124,7 +141,7 @@ export default function PayslipSheet({ weekStart, existing, shifts, workplaces, 
         <div className="sheet-grip" />
         <div className="sheet-head">
           <h3>
-            Payslip · {fmtDateShort(targetWeek)} – {fmtDateShort(weekEnd)}
+            Payslip & cash · {fmtDateShort(targetWeek)} – {fmtDateShort(weekEnd)}
           </h3>
           <button className="icon-btn" aria-label="Close" onClick={onClose}>
             <CloseIcon />
@@ -219,16 +236,46 @@ export default function PayslipSheet({ weekStart, existing, shifts, workplaces, 
               </p>
             </>
           )}
-          {app.cash > 0 && <p className="small muted">Cash shifts this week ({fmtMoney(app.cash)}) aren't on the payslip and are added separately.</p>}
+          {app.cashExpected > 0 && (
+            <p className="small muted">Cash shifts this week ({fmtCash(app.cashExpected)}) aren't on the payslip and are added separately.</p>
+          )}
         </section>
+
+        {(app.cashExpected > 0 || existingCash !== undefined) && (
+          <section className="card">
+            <div className="card-title">Cash received this week</div>
+            <label className="field">
+              <span>Amount you actually got in cash</span>
+              <div className="money-input">
+                <span>$</span>
+                <input
+                  inputMode="decimal"
+                  placeholder={String(app.cashExpected)}
+                  value={cashText}
+                  onChange={(e) => setCashText(e.target.value)}
+                  aria-label="Cash received this week"
+                />
+              </div>
+            </label>
+            <p className="small muted">
+              Expected {fmtCash(app.cashExpected)} from this week's cash shifts. Leave it empty if you got exactly that.
+            </p>
+            {cashDiff !== 0 && (
+              <p className={cashDiff > 0 ? 'small up' : 'small down'}>
+                {cashDiff > 0 ? '+' : '−'}
+                {fmtCash(Math.abs(cashDiff))} {cashDiff > 0 ? 'more' : 'less'} than expected
+              </p>
+            )}
+          </section>
+        )}
 
         <div className="sheet-actions">
           {existing && <ConfirmButton label="Remove payslip" confirmLabel="Tap again to remove" onConfirm={() => onDelete(weekStart)} />}
           <button className="secondary" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={!valid} onClick={save}>
-            Save payslip
+          <button className="primary" disabled={!canSave} onClick={save}>
+            Save
           </button>
         </div>
       </div>

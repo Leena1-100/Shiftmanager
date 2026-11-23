@@ -79,10 +79,17 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
           </div>
           {money.cash > 0 && (
             <div>
-              <span>
-                Cash shifts (no tax{money.cashExact !== money.cash ? `, from ${fmtMoney(money.cashExact)}` : ''})
-              </span>
+              <span>Cash shifts (no tax)</span>
               <b>{fmtCash(money.cash)}</b>
+            </div>
+          )}
+          {money.cashDiff !== 0 && (
+            <div className="cash-diff">
+              <span>Cash received vs expected {fmtCash(money.cashExpected)}</span>
+              <b>
+                {money.cashDiff > 0 ? '+' : '−'}
+                {fmtCash(Math.abs(money.cashDiff))}
+              </b>
             </div>
           )}
         </div>
@@ -179,11 +186,21 @@ export default function HomeTab({ settings, workplaces, shifts, weekMeta, onOpen
               <span>{+tandaHours.toFixed(2)} hrs</span>
               <b>{fmtMoney(money.tandaGross)}</b>
             </li>
-            {cashHours > 0 && (
+            {(cashHours > 0 || money.cash > 0) && (
               <li>
                 <span>Cash shifts</span>
                 <span>{+cashHours.toFixed(2)} hrs</span>
                 <b>{fmtCash(money.cash)}</b>
+              </li>
+            )}
+            {money.cashDiff !== 0 && (
+              <li className={money.cashDiff > 0 ? 'up' : 'down'}>
+                <span>{money.cashDiff > 0 ? 'Got more cash than expected' : 'Got less cash than expected'}</span>
+                <span />
+                <b>
+                  {money.cashDiff > 0 ? '+' : '−'}
+                  {fmtCash(Math.abs(money.cashDiff))}
+                </b>
               </li>
             )}
             <li className="total">

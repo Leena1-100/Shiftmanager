@@ -1992,3 +1992,20 @@ a.link {
 .breakdown .mismatch {
   color: #c77712;
 }
+
+/* Cash received vs expected */
+.cash-diff {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff3c4;
+}
+
+.breakdown li.up b,
+.breakdown li.up span:first-child {
+  color: var(--up);
+}
+
+.breakdown li.down b,
+.breakdown li.down span:first-child {
+  color: var(--down);
+}

@@ -195,17 +195,22 @@ export default function App() {
           key={payslipWeek}
           weekStart={payslipWeek}
           existing={state.weeks[payslipWeek]?.payslip}
+          existingCash={state.weeks[payslipWeek]?.cashReceived}
           shifts={state.shifts}
           workplaces={state.workplaces}
           settings={settings}
-          onSave={(week, payslip) => {
+          onSave={(week, payslip, cashReceived) => {
             // Saving to another week (the payslip's own period) moves it there
             setState((st) => {
               const weeks = { ...st.weeks };
-              if (week !== payslipWeek && weeks[payslipWeek]?.payslip) {
+              if (payslip && week !== payslipWeek && weeks[payslipWeek]?.payslip) {
                 weeks[payslipWeek] = { ...weeks[payslipWeek], payslip: undefined };
               }
-              weeks[week] = { ...weeks[week], payslip };
+              weeks[week] = {
+                ...weeks[week],
+                ...(payslip ? { payslip } : {}),
+                ...(cashReceived !== undefined ? { cashReceived: cashReceived ?? undefined } : {}),
+              };
               return { ...st, weeks };
             });
             setPayslipWeek(null);

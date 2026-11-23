@@ -43,7 +43,8 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenPayslip, onOpenW
 
   const fy = fyStart(today);
   const fyWeeks = weeks.filter((w) => w.start >= fy && w.start <= today);
-  const fyGross = fyWeeks.reduce((a, w) => a + w.gross, 0);
+  // Tanda (taxed) pay only: cash shifts aren't part of the taxable income
+  const fyGross = fyWeeks.reduce((a, w) => a + w.money.tandaGross, 0);
   const fyTax = fyWeeks.reduce((a, w) => a + w.tax, 0);
   const monthKey = today.slice(0, 7);
   const monthName = MONTH_LONG[Number(monthKey.slice(5)) - 1];
@@ -58,7 +59,7 @@ export default function HistoryTab({ state, onUpdateWeek, onOpenPayslip, onOpenW
   return (
     <div className="stack">
       <section className="hero compact">
-        <div className="hero-label">This financial year (from {fmtDateShort(fy)}) before tax</div>
+        <div className="hero-label">This financial year (from {fmtDateShort(fy)}) Tanda pay before tax</div>
         <div className="hero-amount">{fmtMoney(fyGross)}</div>
         <div className="hero-rows">
           <div>
